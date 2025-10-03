@@ -1,4 +1,4 @@
-// src/components/MenuItem.jsx (Contiene la lógica de TPV)
+// src/components/MenuItem.jsx
 
 import React from "react";
 
@@ -31,8 +31,9 @@ const MenuItem = ({ dish, activeOrder, setActiveOrder }) => {
   };
 
   if (!dish.available) {
+    // Estilo para platos agotados
     return (
-      <div className="p-3 bg-gray-200 border-gray-300 opacity-60 rounded-lg shadow-sm">
+      <div className="p-3 bg-gray-200 border-gray-300 opacity-60 rounded-lg shadow-sm h-full">
         <p className="font-bold text-lg text-gray-500">{dish.name}</p>
         <p className="text-sm text-red-500 font-semibold">AGOTADO</p>
       </div>
@@ -44,7 +45,8 @@ const MenuItem = ({ dish, activeOrder, setActiveOrder }) => {
       {/* Sección Superior: Info del Plato y Cantidad Actual */}
       <div className="flex justify-between items-start mb-2">
         <div className="truncate pr-2">
-          <p className="font-bold text-lg text-gray-800 truncate">
+          {/* CORRECCIÓN: Aseguramos texto negro como solicitaste */}
+          <p className="font-bold text-lg text-gray-900 truncate">
             {dish.name}
           </p>
           <p className="text-sm text-red-700 font-bold mt-1">
@@ -89,4 +91,4 @@ const MenuItem = ({ dish, activeOrder, setActiveOrder }) => {
   );
 };
 
-export default MenuItem; // Exportamos con el nombre que quieres usar
+export default MenuItem;
