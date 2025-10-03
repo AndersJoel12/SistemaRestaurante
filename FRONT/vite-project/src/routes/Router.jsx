@@ -6,8 +6,8 @@ function AppRouter() {
     return(
         <Routes>
             <Route path='/' element={<Home />} />
- {/*            <Route path='/menu' element={<Menu />} /> */}
-            {/* <Route path='/orders' element={< orders/>} /> */}
+            <Route path='/menu' element={<Menu />} />
+            <Route path='/orders' element={< orders/>} />
         </Routes>
     )
 }
