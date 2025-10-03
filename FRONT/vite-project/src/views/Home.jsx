@@ -3,10 +3,13 @@ import '../views/ViewStyles.css'
 
 function Home(){
     return(
-    <div style={{ background: 'lightblue' }}>
-        <h1>Hola amigo</h1>
-        <p>como estas</p>
-    </div>
+        <main>
+            <div>
+                <button className="px-6 py-3 bg-green-600 text-white rounded-full hover:bg-green-700 transition">
+                    Haz clic aquí
+                </button>
+            </div>
+        </main>
     )
 }
 
