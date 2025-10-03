@@ -1,6 +1,6 @@
 import {Routes, Route } from 'react-router-dom';
 import Home from '../views/Home';
-/* import Menu from '../views/Menu' */
+import Menu from '../views/Menu'
 
 function AppRouter() {
     return(
