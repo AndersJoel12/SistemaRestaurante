@@ -2,12 +2,12 @@ import { Link, useLocation } from "react-router-dom";
 import './Components.css';
 
 function NavBar() {
-  const location = useLocation();
+/*   const location = useLocation();
   const hiddenRoutes = ['/kitchen', '/'];
 
   if (hiddenRoutes.includes(location.pathname)) {
     return null;
-  }
+  } */
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-red-800 border-t shadow-md z-50">
       <div className="flex justify-around items-center h-14 text-sm text-yellow-400 font-medium">
