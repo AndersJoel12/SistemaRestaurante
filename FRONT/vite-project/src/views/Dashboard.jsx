@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Menu from "./Menu.jsx";
-import Orders from "./orders.jsx";
+import Orders from "./Orders.jsx";
 const Dashboard = () => {
   // Estados maestros compartidos
   const [activeOrder, setActiveOrder] = useState([]);

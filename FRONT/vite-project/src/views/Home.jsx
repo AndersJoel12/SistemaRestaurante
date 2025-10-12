@@ -34,7 +34,6 @@ function Home() {
             </div>
         </div>
 
-        {/* Modal */}
         <SignUpModal isOpen={showModal} onClose={() => setShowModal(false)} />
         </div>
     )

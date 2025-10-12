@@ -60,7 +60,7 @@ const Menu = ({ activeOrder, setActiveOrder, navigateTo }) => {
   const categoryObj = categories.find((c) => c.id === activeCategory);
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 h-full w-full">
       {/* Header */}
       <div className="w-full bg-red-800 shadow-lg z-30 top-0">
         <header className="p-4 text-white">
@@ -70,7 +70,7 @@ const Menu = ({ activeOrder, setActiveOrder, navigateTo }) => {
           <input
             type="text"
             placeholder="Buscar plato por nombre..."
-            className="mt-3 p-2 w-full rounded-lg text-gray-800 focus:ring-2 focus:ring-yellow-400"
+            className="mt-3 p-2 w-full rounded-lg border-amber-500 border-2 text-gray-900 focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 focus:outline-none"
           />
         </header>
 
@@ -93,7 +93,7 @@ const Menu = ({ activeOrder, setActiveOrder, navigateTo }) => {
       </div>
 
       {/* Contenido */}
-      <main className="flex mt-48">
+      <main className="flex mt-1">
         <div className="flex-1 p-4 pr-4">
           <h2 className="text-2xl font-semibold mb-4 text-red-700 border-b pb-2 border-red-200">
             {categoryObj ? categoryObj.name : "—"}
@@ -120,7 +120,7 @@ const Menu = ({ activeOrder, setActiveOrder, navigateTo }) => {
           <div className="mt-6">
             <button
               onClick={() => navigateTo?.("active_order")}
-              className="px-4 py-2 bg-yellow-400 text-red-900 font-bold rounded hover:bg-yellow-500 transition-colors transition-transform active:scale-95"
+              className="px-4 py-2 bg-yellow-400 text-red-900 font-bold rounded hover:bg-yellow-500 transition-transform active:scale-95"
             >
               Revisar y enviar orden
             </button>

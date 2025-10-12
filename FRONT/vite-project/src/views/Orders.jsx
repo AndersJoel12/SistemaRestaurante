@@ -146,7 +146,7 @@ const Orders = ({
           <button
             onClick={sendOrder}
             className={`w-full p-4 rounded-xl font-extrabold text-white text-xl transition-colors shadow-lg
-                        transition-transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-yellow-400
+                        active:scale-95 focus:outline-none focus:ring-2 focus:ring-yellow-400
                         ${
                           activeOrder.length > 0
                             ? "bg-red-700 hover:bg-red-600"
