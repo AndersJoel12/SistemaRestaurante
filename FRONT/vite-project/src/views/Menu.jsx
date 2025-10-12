@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MenuItem from "../components/MenuItem";
 
 const categories = [
@@ -53,14 +54,15 @@ const dishes = [
   },
 ];
 
-const Menu = ({ activeOrder, setActiveOrder, navigateTo }) => {
+const Menu = ({ activeOrder, setActiveOrder }) => {
   const [activeCategory, setActiveCategory] = useState("entradas");
+  const navigate = useNavigate();
 
   const filteredDishes = dishes.filter((d) => d.category === activeCategory);
   const categoryObj = categories.find((c) => c.id === activeCategory);
 
   return (
-    <div className="bg-gray-50 h-full w-full">
+    <div className="bg-gray-50 min-h-screen w-full">
       {/* Header */}
       <div className="w-full bg-red-800 shadow-lg z-30 top-0">
         <header className="p-4 text-white">
@@ -93,8 +95,8 @@ const Menu = ({ activeOrder, setActiveOrder, navigateTo }) => {
       </div>
 
       {/* Contenido */}
-      <main className="flex mt-1">
-        <div className="flex-1 p-4 pr-4">
+      <main className="flex mt-2">
+        <div className="flex-1 p-4">
           <h2 className="text-2xl font-semibold mb-4 text-red-700 border-b pb-2 border-red-200">
             {categoryObj ? categoryObj.name : "—"}
           </h2>
@@ -119,7 +121,7 @@ const Menu = ({ activeOrder, setActiveOrder, navigateTo }) => {
           {/* Botón: ir a revisión */}
           <div className="mt-6">
             <button
-              onClick={() => navigateTo?.("active_order")}
+              onClick={() => navigate("/Orders")}
               className="px-4 py-2 bg-yellow-400 text-red-900 font-bold rounded hover:bg-yellow-500 transition-transform active:scale-95"
             >
               Revisar y enviar orden
