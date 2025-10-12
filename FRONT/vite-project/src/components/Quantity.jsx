@@ -9,7 +9,7 @@ const Quantity = ({ value = 0, onIncrease, onDecrease, disabled = false }) => {
         onClick={onDecrease}
         disabled={!canDecrease}
         className={`p-2 w-full rounded-lg font-extrabold text-xl
-                    transition-colors transition-transform active:scale-95
+                    transition-colors active:scale-95
                     focus:outline-none focus:ring-2 focus:ring-yellow-400
                     ${
                       canDecrease
@@ -23,8 +23,8 @@ const Quantity = ({ value = 0, onIncrease, onDecrease, disabled = false }) => {
       <button
         onClick={onIncrease}
         className="p-2 w-full bg-red-700 text-yellow-400 hover:bg-red-600 rounded-lg font-extrabold text-xl
-                   transition-colors transition-transform active:scale-95
-                   focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  transition-colors active:scale-95
+                  focus:outline-none focus:ring-2 focus:ring-yellow-400"
       >
         +
       </button>
