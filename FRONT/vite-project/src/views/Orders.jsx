@@ -1,35 +1,51 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
-const Orders = ({ activeOrder = [] }) => {
-  // Cálculo de subtotal
-  const subtotal = activeOrder.reduce(
-    (acc, item) =>
-      acc +
-      (typeof item.price === "number" ? item.price : 0) * (item.quantity || 0),
-    0
-  );
+const Orders = ({ activeOrder = [], saveOrderToList }) => {
+  const navigate = useNavigate();
+
+  const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
+  const subtotal = activeOrder
+    .reduce(
+      (sum, i) =>
+        sum + (typeof i.price === "number" ? i.price : 0) * (i.quantity || 0),
+      0
+    )
+    .toFixed(2);
+
+  // 👇 define la función que faltaba
+  const handleBack = () => {
+    navigate("/menu");
+  };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-4">
-      <h2 className="text-2xl font-extrabold text-yellow-600 border-b-2 border-yellow-400 pb-1 mb-4">
-        ORDEN DE MESA: NUEVA
+    <div className="p-4 bg-white min-h-screen flex flex-col">
+      <button
+        onClick={handleBack}
+        className="mb-4 text-sm text-blue-600 hover:underline"
+      >
+        ← Volver al menú
+      </button>
+
+      <h2 className="text-2xl font-extrabold text-red-700 mb-4">
+        📋 Revisión de Orden ({totalItems} plato{totalItems !== 1 ? "s" : ""})
       </h2>
 
-      <div className="space-y-2 max-h-56 overflow-y-auto pr-2">
-        {activeOrder.length === 0 ? (
+      <div className="flex-1 overflow-y-auto space-y-3">
+        {totalItems === 0 ? (
           <p className="text-gray-500 italic">
-            Usa el menú para añadir platos.
+            La orden está vacía. Regresa al menú para añadir platos.
           </p>
         ) : (
           activeOrder.map((item) => (
             <div
               key={item.id}
-              className="flex justify-between text-sm items-center"
+              className="flex justify-between items-center bg-gray-50 p-3 rounded shadow-sm"
             >
-              <span className="text-gray-900 truncate">
+              <span className="font-medium text-gray-900">
                 {item.quantity}x {item.name}
               </span>
-              <span className="font-bold text-red-700">
+              <span className="font-extrabold text-red-700">
                 ${(item.price * item.quantity).toFixed(2)}
               </span>
             </div>
@@ -37,9 +53,34 @@ const Orders = ({ activeOrder = [] }) => {
         )}
       </div>
 
-      <div className="mt-4 pt-2 border-t border-gray-300 flex justify-between font-extrabold text-xl">
-        <span>SUBTOTAL:</span>
-        <span className="text-red-700">${subtotal.toFixed(2)}</span>
+      <div className="mt-4 pt-4 border-t border-gray-300">
+        <div className="flex justify-between font-bold text-xl mb-4">
+          <span>SUBTOTAL:</span>
+          <span className="text-red-700">${subtotal}</span>
+        </div>
+
+        <button
+          onClick={() => {
+            if (totalItems === 0) return alert("La orden está vacía.");
+            const newOrder = {
+              id: Date.now(),
+              items: activeOrder,
+              subtotal,
+              status: "PENDIENTE_COCINA",
+              timestamp: new Date().toLocaleTimeString(),
+            };
+            saveOrderToList(newOrder);
+            navigate("/menu");
+          }}
+          disabled={totalItems === 0}
+          className={`w-full py-3 font-bold text-white rounded ${
+            totalItems > 0
+              ? "bg-red-700 hover:bg-red-600"
+              : "bg-gray-400 cursor-not-allowed"
+          }`}
+        >
+          ENVIAR ORDEN A COCINA
+        </button>
       </div>
     </div>
   );
