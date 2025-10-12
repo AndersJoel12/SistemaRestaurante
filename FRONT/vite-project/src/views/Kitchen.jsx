@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 
 const Kitchen = () => {
     const [kanbanData, setKanbanData] = useState({
-        recibido: ['Tarea 1', 'Tarea 2'],
-        enProceso: ['Tarea 3'],
-        finalizado: ['Tarea 4'],
+        Recibido: ['Tarea 1', 'Tarea 2'],
+        Pendiente: ['Tarea 3'],
+        Finalizado: ['Tarea 4'],
     });
 
     const moverTarea = (estadoActual, index, nuevoEstado) => {
@@ -21,11 +21,11 @@ const Kitchen = () => {
     const renderBotones = (estado, index) => {
         const botones = [];
 
-        if (estado !== 'recibido') {
+        if (estado !== 'Recibido') {
         botones.push(
             <button
-            key="recibido"
-            onClick={() => moverTarea(estado, index, 'recibido')}
+            key="Recibido"
+            onClick={() => moverTarea(estado, index, 'Recibido')}
             className="text-xs bg-blue-200 px-2 py-1 rounded mr-1"
             >
             ← Recibido
@@ -33,11 +33,11 @@ const Kitchen = () => {
         );
         }
 
-        if (estado !== 'enProceso') {
+        if (estado !== 'Pendiente') {
         botones.push(
             <button
-            key="enProceso"
-            onClick={() => moverTarea(estado, index, 'enProceso')}
+            key="Pendiente"
+            onClick={() => moverTarea(estado, index, 'Pendiente')}
             className="text-xs bg-yellow-200 px-2 py-1 rounded mr-1"
             >
             → En Proceso
@@ -45,11 +45,11 @@ const Kitchen = () => {
         );
         }
 
-        if (estado !== 'finalizado') {
+        if (estado !== 'Finalizado') {
         botones.push(
             <button
-            key="finalizado"
-            onClick={() => moverTarea(estado, index, 'finalizado')}
+            key="Finalizado"
+            onClick={() => moverTarea(estado, index, 'Finalizado')}
             className="text-xs bg-green-200 px-2 py-1 rounded"
             >
             ✔ Finalizado
@@ -61,7 +61,7 @@ const Kitchen = () => {
     };
 
     return (
-        <div className="flex gap-4 p-4 bg-gray-100 min-h-screen">
+        <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-100 min-h-screen">
         {Object.entries(kanbanData).map(([estado, tareas]) => (
             <div key={estado} className="flex-1 bg-white rounded-lg shadow-md p-4">
             <h2 className="text-lg font-bold mb-4 capitalize">{estado}</h2>
