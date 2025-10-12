@@ -5,7 +5,6 @@ const Home = lazy(() => import('../views/Home'))
 const Menu = lazy(() => import('../views/Menu'))
 const Orders = lazy(() => import('../views/Orders'))
 const Kitchen = lazy(() => import('../views/Kitchen'))
-const Dashboard = lazy(() => import('../views/Dashboard'))
 
 function AppRouter() {
     return(
@@ -17,7 +16,6 @@ function AppRouter() {
                 <Route path='/menu' element={<Menu />} />
                 <Route path='/orders' element={<Orders />} />
                 <Route path='/kitchen' element={<Kitchen />} />
-                <Route path='/dashboard' element={<Dashboard />} />
             </Routes>
         </Suspense>
     )
