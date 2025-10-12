@@ -11,8 +11,6 @@ function NavBar() {
       <Link to="/orders">Pedidos</Link>
       <span className="p-2"></span>
       <Link to="/kitchen">Cocina</Link>
-      <span className="p-2"></span>
-      <Link to="/dashboard">Dashboard</Link>
     </nav>
   );
 }
