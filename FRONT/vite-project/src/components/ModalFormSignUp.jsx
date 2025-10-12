@@ -1,13 +1,40 @@
-import './Components.css'
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './Components.css';
 
 function SignUpModal({ isOpen, onClose }) {
-    if (!isOpen) return null // Evita renderizar el modal si está cerrado
+    const navigate = useNavigate();
+
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [errors, setErrors] = useState({});
+
+    if (!isOpen) return null;
 
     const handleSubmit = (e) => {
-        e.preventDefault()
-        // Aquí puedes manejar el login (validación, API, etc.)
-        console.log('Formulario enviado')
-    }
+        e.preventDefault();
+        const newErrors = {};
+
+        if (!username.trim()) {
+        newErrors.username = 'El usuario es obligatorio';
+        }
+
+        if (!password.trim()) {
+        newErrors.password = 'La contraseña es obligatoria';
+        } else if (password.length < 6) {
+        newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+        }
+
+        // Si no hay errores, continúa con el envío
+        setErrors({});
+        onClose();         // Cierra el modal
+        navigate('/menu'); 
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -20,21 +47,41 @@ function SignUpModal({ isOpen, onClose }) {
             <h2 className="text-xl font-bold text-red-600 mb-4">Iniciar Sesión</h2>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
-            <input
+            <div>
+                <input
                 type="text"
                 placeholder="Usuario"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-            <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    errors.username ? 'border-red-500 ring-red-500' : 'focus:ring-red-500'
+                }`}
+                />
+                {errors.username && (
+                <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                )}
+            </div>
+
+            <div>
+                <input
                 type="password"
                 placeholder="Contraseña"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    errors.password ? 'border-red-500 ring-red-500' : 'focus:ring-red-500'
+                }`}
+                />
+                {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
+            </div>
+
             <button
                 type="submit"
                 className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition cursor-pointer"
             >
-            Acceder
+                Acceder
             </button>
             </form>
 
@@ -46,7 +93,7 @@ function SignUpModal({ isOpen, onClose }) {
             </button>
         </div>
         </div>
-    )
-}
+    );
+    }
 
-export default SignUpModal
+export default SignUpModal;

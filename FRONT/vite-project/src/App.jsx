@@ -5,8 +5,8 @@ import Router from "./routes/Router.jsx";
 function App() {
   return (
     <>
-      <NavBar />
       <Router />
+      <NavBar />
     </>
   );
 }
