@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
 
-const Kitchen = () => {
+const Kitchen = ({ ordersList }) => {
+    const estadosOrdenados = ['Recibido', 'Pendiente', 'Finalizado'];
+
     const [kanbanData, setKanbanData] = useState({
-        Recibido: ['Tarea 1', 'Tarea 2'],
-        Pendiente: ['Tarea 3'],
-        Finalizado: ['Tarea 4'],
+        Recibido: [],
+        Pendiente: [],
+        Finalizado: [],
     });
+
+  /*   useEffect(() => {
+    // Convertir órdenes enviadas en tareas "Recibido"
+    const tareasRecibidas = ordersList.map(order => `Orden #${order.id}`);
+    setKanbanData(prev => ({
+        ...prev,
+        Recibido: tareasRecibidas,
+    }));
+    }, [ordersList]); */
 
     const moverTarea = (estadoActual, index, nuevoEstado) => {
         const tarea = kanbanData[estadoActual][index];
@@ -20,39 +31,32 @@ const Kitchen = () => {
 
     const renderBotones = (estado, index) => {
         const botones = [];
+        const posicion = estadosOrdenados.indexOf(estado);
 
-        if (estado !== 'Recibido') {
+        // Botón para mover al estado anterior (si existe)
+        if (posicion > 0) {
+        const anterior = estadosOrdenados[posicion - 1];
         botones.push(
             <button
-            key="Recibido"
-            onClick={() => moverTarea(estado, index, 'Recibido')}
+            key={anterior}
+            onClick={() => moverTarea(estado, index, anterior)}
             className="text-xs bg-blue-200 px-2 py-1 rounded mr-1"
             >
-            ← Recibido
+            ← {anterior}
             </button>
         );
         }
 
-        if (estado !== 'Pendiente') {
+        // Botón para mover al estado siguiente (si existe)
+        if (posicion < estadosOrdenados.length - 1) {
+        const siguiente = estadosOrdenados[posicion + 1];
         botones.push(
             <button
-            key="Pendiente"
-            onClick={() => moverTarea(estado, index, 'Pendiente')}
-            className="text-xs bg-yellow-200 px-2 py-1 rounded mr-1"
-            >
-            → En Proceso
-            </button>
-        );
-        }
-
-        if (estado !== 'Finalizado') {
-        botones.push(
-            <button
-            key="Finalizado"
-            onClick={() => moverTarea(estado, index, 'Finalizado')}
+            key={siguiente}
+            onClick={() => moverTarea(estado, index, siguiente)}
             className="text-xs bg-green-200 px-2 py-1 rounded"
             >
-            ✔ Finalizado
+            → {siguiente}
             </button>
         );
         }
@@ -62,11 +66,11 @@ const Kitchen = () => {
 
     return (
         <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-100 min-h-screen">
-        {Object.entries(kanbanData).map(([estado, tareas]) => (
+        {estadosOrdenados.map(estado => (
             <div key={estado} className="flex-1 bg-white rounded-lg shadow-md p-4">
             <h2 className="text-lg font-bold mb-4 capitalize">{estado}</h2>
             <div className="space-y-2">
-                {tareas.map((tarea, index) => (
+                {kanbanData[estado].map((tarea, index) => (
                 <div
                     key={index}
                     className="p-3 bg-yellow-100 border border-yellow-400 rounded-md text-gray-800"
