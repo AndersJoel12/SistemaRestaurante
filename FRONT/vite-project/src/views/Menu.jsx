@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Orders from "./Orders.jsx";
+import { useNavigate } from "react-router-dom";
 import MenuItem from "../components/MenuItem.jsx";
 
 const categories = [
@@ -55,57 +55,24 @@ const dishes = [
 ];
 
 const Menu = () => {
-  // Estado de la orden y vista
-  const [activeOrder, setActiveOrder] = useState([]);
-  const [view, setView] = useState("menu"); // "menu" | "review"
+  const navigate = useNavigate();
 
-  // Conteo de ítems
+  // Estado local de la orden
+  const [activeOrder, setActiveOrder] = useState([]);
+  const [activeCategory, setActiveCategory] = useState("entradas");
+
+  const filteredDishes = dishes.filter((d) => d.category === activeCategory);
   const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
 
-  // Paso a la revisión
   const goReview = () => {
     if (totalItems === 0) {
       alert("La orden está vacía. Añade al menos un plato.");
       return;
     }
-    setView("review");
+    // Navega a Orders pasando la orden por estado de navegación
+    navigate("/orders", { state: { activeOrder } });
   };
 
-  // Confirmación final
-  const saveOrderToList = () => {
-    const subtotal = activeOrder
-      .reduce(
-        (sum, i) =>
-          sum + (typeof i.price === "number" ? i.price : 0) * (i.quantity || 0),
-        0
-      )
-      .toFixed(2);
-
-    alert(
-      `✅ Se enviaron ${totalItems} plato${
-        totalItems !== 1 ? "s" : ""
-      } a cocina.\n` + `Subtotal: $${subtotal}`
-    );
-
-    setActiveOrder([]);
-    setView("menu");
-  };
-
-  // Filtrado por categoría
-  const [activeCategory, setActiveCategory] = useState("entradas");
-  const filteredDishes = dishes.filter((d) => d.category === activeCategory);
-
-  if (view === "review") {
-    return (
-      <Orders
-        activeOrder={activeOrder}
-        saveOrderToList={saveOrderToList}
-        onBack={() => setView("menu")}
-      />
-    );
-  }
-
-  // Vista de menú
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
       {/* Header + categorías */}

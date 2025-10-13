@@ -1,9 +1,12 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-const Orders = ({ activeOrder = [], saveOrderToList }) => {
+const Orders = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
+  // Lee la orden enviada desde Menu por estado de navegación
+  const activeOrder = location.state?.activeOrder || [];
   const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
   const subtotal = activeOrder
     .reduce(
@@ -13,9 +16,23 @@ const Orders = ({ activeOrder = [], saveOrderToList }) => {
     )
     .toFixed(2);
 
-  // 👇 define la función que faltaba
   const handleBack = () => {
     navigate("/menu");
+  };
+
+  const handleConfirm = () => {
+    if (totalItems === 0) return alert("La orden está vacía.");
+
+    const newOrder = {
+      id: Date.now(),
+      items: activeOrder,
+      subtotal,
+      status: "Recibido",
+      timestamp: new Date().toLocaleTimeString(),
+    };
+
+    // Navega a Kitchen pasando la orden confirmada por estado de navegación
+    navigate("/kitchen", { state: { newOrder } });
   };
 
   return (
@@ -60,18 +77,7 @@ const Orders = ({ activeOrder = [], saveOrderToList }) => {
         </div>
 
         <button
-          onClick={() => {
-            if (totalItems === 0) return alert("La orden está vacía.");
-            const newOrder = {
-              id: Date.now(),
-              items: activeOrder,
-              subtotal,
-              status: "PENDIENTE_COCINA",
-              timestamp: new Date().toLocaleTimeString(),
-            };
-            saveOrderToList(newOrder);
-            navigate("/menu");
-          }}
+          onClick={handleConfirm}
           disabled={totalItems === 0}
           className={`w-full py-3 font-bold text-white rounded ${
             totalItems > 0
