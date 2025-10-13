@@ -70,7 +70,7 @@ const Orders = () => {
         )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-300">
+      <div className="mt-4 pt-4 pb-20 border-t border-gray-300">
         <div className="flex justify-between font-bold text-xl mb-4">
           <span>SUBTOTAL:</span>
           <span className="text-red-700">${subtotal}</span>

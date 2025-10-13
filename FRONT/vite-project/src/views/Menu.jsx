@@ -98,7 +98,7 @@ const Menu = () => {
       </div>
 
       {/* Platos */}
-      <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto">
+      <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto" >
         {filteredDishes.length > 0 ? (
           filteredDishes.map((dish) => (
             <MenuItem
@@ -116,7 +116,7 @@ const Menu = () => {
       </main>
 
       {/* Botón “Revisar y enviar” */}
-      <div className="p-4 bg-white sticky bottom-0 border-t border-gray-300">
+      <div className="p-4 pb-20 bg-white sticky bottom-0 border-t border-gray-300">
         <button
           onClick={goReview}
           disabled={totalItems === 0}

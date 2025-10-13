@@ -5,7 +5,7 @@ const MenuItem = ({ dish, activeOrder = [], setActiveOrder }) => {
   // Guardas defensivas
   if (!dish || typeof dish !== "object") {
     return (
-      <div className="p-3 bg-gray-200 rounded-lg shadow-sm h-full">
+      <div className="p-3 bg-gray-200 rounded-lg shadow-sm h-70">
         <p className="font-bold text-sm text-gray-600">Plato inválido</p>
       </div>
     );
@@ -52,7 +52,7 @@ const MenuItem = ({ dish, activeOrder = [], setActiveOrder }) => {
 
   if (!dish.available) {
     return (
-      <div className="p-3 bg-gray-200 border-gray-300 opacity-60 rounded-lg shadow-sm h-full">
+      <div className="p-3 bg-gray-200 border-gray-300 opacity-60 rounded-lg shadow-sm h-70">
         <p className="font-bold text-lg text-gray-500">{dish.name || "—"}</p>
         <p className="text-sm text-red-500 font-semibold">AGOTADO</p>
       </div>
@@ -60,7 +60,7 @@ const MenuItem = ({ dish, activeOrder = [], setActiveOrder }) => {
   }
 
   return (
-    <div className="p-3 bg-white border-2 border-red-100 rounded-lg shadow-md flex flex-col hover:bg-red-50 transition-colors h-full">
+    <div className="p-3 bg-white border-2 border-red-100 rounded-lg shadow-md flex flex-col hover:bg-red-50 transition-colors h-70">
       <div className="flex justify-between items-start mb-2">
         <div className="truncate pr-2">
           <p className="font-bold text-lg text-gray-900 truncate">
