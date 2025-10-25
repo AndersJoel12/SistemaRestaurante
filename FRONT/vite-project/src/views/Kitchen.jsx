@@ -104,8 +104,17 @@ const Kitchen = () => {
     );
   };
 
-  return (
-    <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-100 min-h-screen">
+return (
+  <div className="min-h-screen bg-gray-100">
+    {/* Encabezado fijo */}
+    <div className="top-0 bg-red-800 text-white z-20">
+      <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400">
+        COCINA
+      </h1>
+    </div>
+
+    {/* Contenido Kanban */}
+    <div className="flex flex-col md:flex-row gap-4 p-4">
       {estadosOrdenados.map((estado) => (
         <div key={estado} className="flex-1 bg-white rounded-lg shadow-md p-4">
           <h2 className="text-lg font-bold mb-4 capitalize">{estado}</h2>
@@ -133,7 +142,8 @@ const Kitchen = () => {
         </div>
       ))}
     </div>
-  );
-};
+  </div>
+);
+}
 
 export default Kitchen;

@@ -1,95 +1,54 @@
-import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 
-const Orders = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+const STORAGE_KEY = "kitchen_kanban";
 
-  // Lee la orden enviada desde Menu por estado de navegación
-  const activeOrder = location.state?.activeOrder || [];
-  const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
-  const subtotal = activeOrder
-    .reduce(
-      (sum, i) =>
-        sum + (typeof i.price === "number" ? i.price : 0) * (i.quantity || 0),
-      0
-    )
-    .toFixed(2);
+const Orders= () => {
+  const [orders, setOrders] = useState([]);
 
-  const handleBack = () => {
-    navigate("/menu");
-  };
-
-  const handleConfirm = () => {
-    if (totalItems === 0) return alert("La orden está vacía.");
-
-    const newOrder = {
-      id: Date.now(),
-      items: activeOrder,
-      subtotal,
-      status: "Recibido",
-      timestamp: new Date().toLocaleTimeString(),
-    };
-
-    // Navega a Kitchen pasando la orden confirmada por estado de navegación
-    navigate("/kitchen", { state: { newOrder } });
-  };
+  useEffect(() => {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const allOrders = [
+        ...parsed.Recibido,
+        ...parsed.Pendiente,
+        ...parsed.Finalizado,
+      ];
+      setOrders(allOrders);
+    }
+  }, []);
 
   return (
-    <div className="p-4 bg-white min-h-screen flex flex-col">
-      <button
-        onClick={handleBack}
-        className="mb-4 text-sm text-blue-600 hover:underline"
-      >
-        ← Volver al menú
-      </button>
-
-      <h2 className="text-2xl font-extrabold text-red-700 mb-4">
-        📋 Revisión de Orden ({totalItems} plato{totalItems !== 1 ? "s" : ""})
-      </h2>
-
-      <div className="flex-1 overflow-y-auto space-y-3">
-        {totalItems === 0 ? (
-          <p className="text-gray-500 italic">
-            La orden está vacía. Regresa al menú para añadir platos.
-          </p>
-        ) : (
-          activeOrder.map((item) => (
-            <div
-              key={item.id}
-              className="flex justify-between items-center bg-gray-50 p-3 rounded shadow-sm"
-            >
-              <span className="font-medium text-gray-900">
-                {item.quantity}x {item.name}
-              </span>
-              <span className="font-extrabold text-red-700">
-                ${(item.price * item.quantity).toFixed(2)}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
-
-      <div className="mt-4 pt-4 pb-20 border-t border-gray-300">
-        <div className="flex justify-between font-bold text-xl mb-4">
-          <span>SUBTOTAL:</span>
-          <span className="text-red-700">${subtotal}</span>
-        </div>
-
-        <button
-          onClick={handleConfirm}
-          disabled={totalItems === 0}
-          className={`w-full py-3 font-bold text-white rounded ${
-            totalItems > 0
-              ? "bg-red-700 hover:bg-red-600"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
-        >
-          ENVIAR ORDEN A COCINA
-        </button>
+    <div className="p-4 bg-gray-100 min-h-screen">
+      <h1 className="text-xl font-bold mb-4">Pedidos realizados</h1>
+      <div className="space-y-4">
+        {orders.map((orden) => (
+          <div
+            key={orden.id}
+            className={`p-4 rounded shadow-md border ${
+              orden.status === "Finalizado"
+                ? "border-green-500 bg-green-100"
+                : "border-gray-300 bg-white"
+            }`}
+          >
+            <p className="font-bold">Orden #{orden.id}</p>
+            <p className="text-sm text-gray-600">
+              {orden.timestamp} — Subtotal: ${orden.subtotal}
+            </p>
+            <p className="text-sm font-medium">Estado: {orden.status || "Recibido"}</p>
+            <ul className="ml-4 list-disc text-sm mt-2">
+              {orden.items.map((it) => (
+                <li key={it.id}>
+                  {it.quantity}x {it.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
 export default Orders;
+

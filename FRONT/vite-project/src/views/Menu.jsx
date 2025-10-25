@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MenuItem from "../components/MenuItem.jsx";
+import PreviewOrder from "../components/PreviewOrder.jsx";
 
 const categories = [
   { id: "entradas", name: "ENTRADAS" },
@@ -96,7 +97,6 @@ const Menu = () => {
           ))}
         </nav>
       </div>
-
       {/* Platos */}
       <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto" >
         {filteredDishes.length > 0 ? (
@@ -113,23 +113,9 @@ const Menu = () => {
             No hay platos en esta categoría.
           </p>
         )}
+              {/* Boton de previewOrder */}
+      {totalItems > 0 && <PreviewOrder activeOrder={activeOrder} />}
       </main>
-
-      {/* Botón “Revisar y enviar” */}
-      <div className="p-4 pb-20 bg-white sticky bottom-0 border-t border-gray-300">
-        <button
-          onClick={goReview}
-          disabled={totalItems === 0}
-          className={`w-full py-3 font-bold text-white rounded ${
-            totalItems > 0
-              ? "bg-yellow-400 text-red-900 hover:bg-yellow-500"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
-        >
-          Revisar y enviar orden ({totalItems} plato
-          {totalItems !== 1 ? "s" : ""})
-        </button>
-      </div>
     </div>
   );
 };
