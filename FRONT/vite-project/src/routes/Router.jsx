@@ -1,12 +1,13 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route } from "react-router-dom";
-import Admin from "../views/Admin";
 
 const Home = lazy(() => import("../views/Home"));
 const Menu = lazy(() => import("../views/Menu"));
 const Orders = lazy(() => import("../views/Orders"));
 const Kitchen = lazy(() => import("../views/Kitchen"));
 const Admin = lazy(() => import("../views/Admin"));
+const Tables = lazy(() => import("../views/Tables"));
+
 
 function AppRouter() {
   return (
@@ -24,6 +25,7 @@ function AppRouter() {
         <Route path="/orders" element={<Orders />} />
         <Route path="/kitchen" element={<Kitchen />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/tables" element={<Tables />} />
       </Routes>
     </Suspense>
   );

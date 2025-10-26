@@ -14,6 +14,9 @@ function NavBar() {
         <Link to="/" className="flex flex-col items-center hover:text-red-600 transition py-2">
           <span>Inicio</span>
         </Link>
+        <Link to="/tables" className="flex flex-col items-center hover:text-red-600 transition py-2">
+          <span>Mesas</span>
+        </Link>
         <Link to="/menu" className="flex flex-col items-center hover:text-red-600 transition py-2">
           <span>Menú</span>
         </Link>
