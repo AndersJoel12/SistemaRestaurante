@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+#root {
+    margin: 0 auto;
+    text-align: center;
+}
+
+body {
+    background-color: #e2a4a4;
+}
+
+.fondoRojo{
+    background-color: #e2a4a4;
+}
