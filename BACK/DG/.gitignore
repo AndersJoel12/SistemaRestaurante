@@ -1,0 +1,9 @@
+# Archivos y carpetas generados automáticamente
+__pycache__
+# Directorio del entorno virtual (puedes usar .env/ o el nombre que le diste)
+.env/
+# Archivos de la Base de Datos (si usaste SQLite)
+*.sqlite3
+# Archivo de Claves de Entorno (¡El más IMPORTANTE!)
+.env
+
