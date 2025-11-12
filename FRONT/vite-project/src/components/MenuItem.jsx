@@ -33,7 +33,24 @@ const MenuItem = ({
     }
   };
 
-  // --- Estilos y Renderizado ---
+  // --- Lógica de Administración (Event Handlers) ---
+  const handleEditClick = () => {
+    if (onEdit) {
+      onEdit(dish); 
+    }
+  };
+
+  const handleDeleteClick = () => {
+    if (onDelete) {
+      onDelete(dish.id);
+    }
+  };
+
+  // 💥 CORRECCIÓN CRÍTICA: Convertimos el precio (que es un string de Django) a flotante.
+  const numericPrice = parseFloat(dish.price);
+
+
+  // --- Estilos y Renderizado (Se mantiene igual) ---
   const cardClasses = `bg-white p-4 rounded-xl shadow-lg transform transition duration-300 ${
     dish.available
       ? "hover:shadow-2xl hover:-translate-y-1"
@@ -57,7 +74,8 @@ const MenuItem = ({
   const renderClientMode = () => (
     <div className="flex items-center justify-between mt-3">
       <span className="text-xl font-extrabold text-red-700">
-        ${dish.price.toFixed(2)}
+        {/* Usamos el precio ya convertido: */}
+        ${numericPrice.toFixed(2)} 
       </span>
 
       {dish.available ? (
@@ -80,6 +98,7 @@ const MenuItem = ({
             onClick={() => handleUpdateQuantity(1)}
             className={`${buttonClass} bg-green-500 hover:bg-green-600`}
             aria-label={`Añadir uno de ${dish.name}`}
+            disabled={!dish.available}
           >
             +
           </button>
@@ -92,17 +111,23 @@ const MenuItem = ({
 
   const renderAdminMode = () => (
     <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+      <span className="text-xl font-extrabold text-gray-700">
+        {/* Usamos el precio ya convertido: */}
+        ${numericPrice.toFixed(2)}
+      </span>
       {getAvailabilityStatus()}
       <div className="space-x-2">
         <button
-          onClick={() => onEdit(dish)}
+          onClick={handleEditClick}
           className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+          title="Editar este plato"
         >
           Editar
         </button>
         <button
-          onClick={() => onDelete(dish.id)}
+          onClick={handleDeleteClick}
           className="text-sm font-semibold text-red-600 hover:text-red-800 transition-colors"
+          title="Eliminar este plato del menú (permanente)"
         >
           Eliminar
         </button>

@@ -1,0 +1,30 @@
+// jsconfig.json (en la raíz de tu proyecto React/Vite)
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    
+    /* Configuración de Rutas */
+    // ESTO es lo clave: define que las rutas absolutas (como si fueran alias)
+    // deben resolverse buscando dentro de la carpeta 'src'.
+    "baseUrl": "./src",
+
+    /* Configuración de JSX y Módulos */
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true, // Útil para importaciones en React
+    "esModuleInterop": true,              // Soporte para interoperabilidad de módulos
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    /* Comprobación de Tipos e Integridad (Similar al Linting) */
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+    },
+    
+  // Le dice a VS Code qué archivos incluir en el proyecto para la navegación.
+    "include": ["src/**/*"],
+  // Excluye archivos que no deben ser analizados.
+    "exclude": ["node_modules", "dist"]
+}
