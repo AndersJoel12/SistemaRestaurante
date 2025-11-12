@@ -32,6 +32,7 @@ THIRD_APPS = [
     'simple_history',
     'rest_framework_simplejwt',
     'dotenv',
+    'drf_spectacular',
 ]
 
 
@@ -84,13 +85,24 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication', 
         'rest_framework.authentication.SessionAuthentication', 
     ),
+
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Deligood',
+    'DESCRIPTION': 'Sistema Gestión de pedidos',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
 }
 
 SIMPLE_JWT = {
