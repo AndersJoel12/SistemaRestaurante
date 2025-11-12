@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 BASE_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -115,6 +116,24 @@ SIMPLE_JWT = {
     'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
 }
 
+JAZZMIN_SETTINGS = {
+    "site_title": "DeliGood | Restaurante", 
+    "site_header": "DeliGood",
+    "site_brand": "DeliGood",
+    "site_icon": "assets/logo.png",
+    "welcome_sign": "Bienvenido al Panel de Administración DeliGood",
+
+    "icons": {
+        "auth.user": "fas fa-user",
+        "apps_users.empleado": "fas fa-user-tag", 
+        "apps_pedidos.mesa": "fas fa-utensils", 
+    },
+
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+}
 
 LANGUAGE_CODE = 'es-ES'
 
