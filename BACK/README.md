@@ -112,7 +112,8 @@ Asegúrate de que tu servidor PostgreSQL local esté **corriendo** y luego aplic
 ¡Estás listo para correr la API! 🥳
 
 ```bash
-python manage.py runserver```
+python manage.py runserver
+```
 
 La API estará corriendo en http://127.0.0.1:8000/
 
@@ -121,20 +122,20 @@ La API estará corriendo en http://127.0.0.1:8000/
 
 Puedes acceder a la documentación interactiva aquí:
 
-Swagger UI 📝: http://127.0.0.1:8000/api/schema/swagger-ui/
+*Swagger UI 📝: http://127.0.0.1:8000/api/schema/swagger-ui/*
 
-ReDoc 📚: http://127.0.0.1:8000/api/schema/redoc/
+*ReDoc 📚: http://127.0.0.1:8000/api/schema/redoc/*
 
 Panel de Administración de Django
 Accede al panel de administración para gestionar modelos directamente:
 
-Admin Panel 🔑: http://127.0.0.1:8000/admin
+*Admin Panel 🔑: http://127.0.0.1:8000/admin*
 
 "Recuerde loguearse con el superusuario creado en el paso 5 de la configuración de la Base de Datos."
 
 ### 📦 Estructura del Proyecto
-```
-Aquí te mostramos cómo está organizado el código principal:
+
+```Aquí te mostramos cómo está organizado el código principal:
 DG/: Carpeta principal del proyecto Django (settings, urls, wsgi, etc.).
 DG/settings/: Contiene la configuración específica (base.py, local.py).
 apps/: Contiene las aplicaciones modulares del sistema (ej: users, pedidos, productos, etc.).
