@@ -26,14 +26,14 @@ class ProductoSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'nombre',
+            'imagen',
             'descripcion',
             'precio',
             'disponible',
+            'categoria',
             'categoria_id',
-            'created_at',
-            'updated_at',
-            'state'
             )
+        
         read_only_fields = ('id', 'created_at', 'updated_at', 'state')
 
     def validate_precio(self, value):

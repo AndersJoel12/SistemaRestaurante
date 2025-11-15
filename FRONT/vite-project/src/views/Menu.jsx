@@ -1,148 +1,166 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import MenuItem from "../components/MenuItem.jsx";
 import PreviewOrder from "../components/PreviewOrder.jsx";
+import axios from "axios";
 
-// --- DATOS BASE DEL MENÚ (Copia de seguridad si no hay caché) ---
-const initialDishes = [
-  {
-    id: 101,
-    category: "entradas",
-    name: "Rollitos Primavera",
-    price: 4.5,
-    available: true,
-  },
-  {
-    id: 102,
-    category: "entradas",
-    name: "Sopa Miso Tradicional",
-    price: 3.0,
-    available: true,
-  },
-  {
-    id: 201,
-    category: "sushi",
-    name: "California Roll",
-    price: 8.99,
-    available: true,
-  },
-  {
-    id: 204,
-    category: "sushi",
-    name: "Sashimi de Atún Fresco",
-    price: 12.0,
-    available: false,
-  },
-  {
-    id: 303,
-    category: "bebidas",
-    name: "Refresco Cola Grande",
-    price: 2.0,
-    available: true,
-  },
-  {
-    id: 402,
-    category: "postre",
-    name: "Helado Frito (Tempura)",
-    price: 6.5,
-    available: true,
-  },
-];
-
-const categories = [
-  { id: "entradas", name: "ENTRADAS" },
-  { id: "sushi", name: "SUSHI" },
-  { id: "bebidas", name: "BEBIDAS" },
-  { id: "postre", name: "POSTRE" },
-];
+const CATEGORIES_API_URL = "http://127.0.0.1:8000/api/categorias/"; 
+const PRODUCTS_API_URL = "http://127.0.0.1:8000/api/productos/";
 
 const Menu = () => {
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  // **LÓGICA DEL CACHÉ TEMPORAL:** Usa el estado de la ruta o los datos iniciales
-  const cachedDishes = location.state?.dishes || initialDishes;
-  const [dishes, setDishes] = useState(cachedDishes); // Estado local de la orden
+  const [dishes, setDishes] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
 
   const [activeOrder, setActiveOrder] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("entradas");
+  const [activeCategory, setActiveCategory] = useState(null); // Inicialmente nulo
 
-  // Sincroniza los platos con el caché si hay cambios
+  const fetchMenuData = useCallback(async () => {
+    console.log("Fetching menu data from API...");
+    setLoading(true);
+    setApiError(null);
+
+    try {
+      const [catResponse, prodResponse] = await Promise.all([
+        axios.get(CATEGORIES_API_URL),
+        axios.get(PRODUCTS_API_URL),
+      ]);
+
+      const fetchedCategories = catResponse.data;
+      setCategories(fetchedCategories);
+
+      const fetchedProducts = prodResponse.data;
+      setDishes(fetchedProducts);
+
+      if (fetchedCategories.length > 0) {
+        const firstCategorySlug = fetchedCategories[0].id; 
+        setActiveCategory(firstCategorySlug);
+      } else {
+        console.log("   ADVERTENCIA: No se obtuvieron categorías, categoría activa NULA.");
+      }
+    } catch (error) {
+      console.error("--- ❌ ERROR FATAL DE CARGA DE API ---");
+      console.error("Detalles del error (verifique red, URL y permisos):", error);
+            
+      let errorMessage = "Ocurrió un error al conectar con el servidor.";
+      if (error.response) {
+        errorMessage = `Error ${error.response.status}: Problema de permisos o formato de datos.`;
+        console.error("   Error de Respuesta (Status y Data):", error.response.status, error.response.data);
+      } else if (error.request) {
+        errorMessage = "Error de red: No se pudo alcanzar el servidor (verifique que esté corriendo en 8000).";
+      }
+
+      setApiError(errorMessage);
+      setCategories([]); 
+      setDishes([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);  
+
+  // Ejecuta la función de carga al montar el componente
   useEffect(() => {
-    setDishes(cachedDishes);
-  }, [cachedDishes]);
+    fetchMenuData();
+  }, [fetchMenuData]);
 
-  const filteredDishes = dishes.filter((d) => d.category === activeCategory);
+// Filtra los platos. Nota: 'dish.category' debe coincidir con 'activeCategory' (el ID de la categoría).
+  const filteredDishes = dishes.filter((d) => d.categoria === activeCategory);
+  console.log(`Filtro: Mostrando ${filteredDishes.length} platos para la categoría: ${activeCategory}`);
+
   const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
 
   const goReview = () => {
     if (totalItems === 0) {
-      console.error("La orden está vacía. Añade al menos un plato.");
-      return;
-    } // Navega a Orders, pasando la orden y el menú actual (caché)
+        console.error("La orden está vacía. Añade al menos un plato.");
+        return;
+    } 
+    console.log("Iniciando redirección a /orders con total items:", totalItems);
     navigate("/orders", { state: { activeOrder, dishes } });
-  };
+};
 
-  return (
-    <div className="bg-gray-50 min-h-screen flex flex-col">
-            {/* Header + categorías (Sticky Top) */}     {" "}
-      <div className="sticky top-0 bg-red-800 text-white z-20">
-               {" "}
-        <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400">
-                    DatteBayo        {" "}
-        </h1>
-               {" "}
-        <nav className="flex justify-center space-x-2 bg-red-700 border-t border-red-900">
-                   {" "}
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-4 py-2 text-sm font-bold transition-colors ${
-                activeCategory === cat.id
-                  ? "bg-yellow-400 text-red-900"
-                  : "hover:bg-red-600"
-              }`}
-            >
-                            {cat.name}           {" "}
-            </button>
-          ))}
-                 {" "}
-        </nav>
-             {" "}
+const updateOrder = (dish, action, newQuantity) => {
+    console.log(`Evento de Orden: Plato ID ${dish.id}, Acción: ${action}`);
+    setActiveOrder(prevOrder => {
+        // ... (lógica de actualización de orden, omitida por brevedad) ...
+        return prevOrder; // Mantener por el momento
+    });
+};
+
+
+return (
+  <div className="bg-gray-50 min-h-screen flex flex-col">
+      {/* Header + categorías (Sticky Top) */}
+      <div className="sticky top-0 bg-red-800 text-white z-20 shadow-lg">
+          <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400">
+              DatteBayo
+          </h1>
+          <nav className="flex justify-center space-x-2 bg-red-700 border-t border-red-900 overflow-x-auto">
+              {/* Botones de Categoría */}
+              {categories.map((cat) => (
+                  <button
+                      key={cat.id} 
+                      onClick={() => {
+                          setActiveCategory(cat.id);
+                          console.log("Clic: Nueva categoría activa:", cat.id);
+                      }}
+                      className={`flex-shrink-0 px-4 py-2 text-sm font-bold transition-colors whitespace-nowrap ${
+                          activeCategory === cat.id
+                              ? "bg-yellow-400 text-red-900 shadow-inner"
+                              : "hover:bg-red-600"
+                      }`}
+                  >
+                      {cat.nombre || cat.name} 
+                  </button>
+              ))}
+          </nav>
       </div>
-                  {/* Platos (Main Content) */}     {" "}
-      {/* pb-24: Espacio al final para que el contenido no quede detrás del PreviewOrder fijo */}
-           {" "}
-      <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
-               {" "}
-        {filteredDishes.length > 0 ? (
-          filteredDishes.map((dish) => (
-            <MenuItem
-              key={dish.id}
-              dish={dish}
-              activeOrder={activeOrder}
-              setActiveOrder={setActiveOrder}
-            />
-          ))
-        ) : (
-          <p className="col-span-full text-gray-500">
-                        No hay platos en esta categoría.          {" "}
-          </p>
-        )}
-             {" "}
+
+      {/* Platos (Main Content) */}
+      <main className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pb-24">
+          
+          {loading && (
+              <p className="col-span-full text-center text-red-500 font-semibold mt-10">Cargando menú y categorías...</p>
+          )}
+
+          {apiError && (
+              <p className="col-span-full text-center text-red-700 bg-red-100 p-3 border border-red-300 rounded-lg mt-4">
+                  {apiError} Revisa la consola para ver los pasos de la API.
+              </p>
+          )}
+
+          {/* Renderizar platos */}
+          {!loading && !apiError && filteredDishes.length > 0 ? (
+              filteredDishes.map((dish) => (
+                  <MenuItem
+                      key={dish.id}
+                      dish={dish}
+                      activeOrder={activeOrder} // Prop temporal, debe ser reemplazada por orderItem
+                      setActiveOrder={setActiveOrder} // Prop temporal, debe ser reemplazada por updateOrder
+                  />
+              ))
+          ) : !loading && !apiError && (
+              <p className="col-span-full text-gray-500 text-center mt-10">
+                  No hay platos disponibles en la categoría **{activeCategory || 'ninguna'}**.
+              </p>
+          )}
       </main>
-      {/* PreviewOrder (Flotando en la parte inferior de la pantalla) */}     {" "}
+
+      {/* PreviewOrder (Flotando en la parte inferior de la pantalla) */}
       {totalItems > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-transparent pointer-events-none">
-          <div className="max-w-4xl mx-auto pointer-events-auto">
-            <PreviewOrder activeOrder={activeOrder} onReview={goReview} />
+          <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-transparent pointer-events-none">
+              <div className="max-w-4xl mx-auto pointer-events-auto">
+                  <PreviewOrder activeOrder={activeOrder} onReview={goReview} />
+              </div>
           </div>
-        </div>
       )}
-         {" "}
-    </div>
-  );
+  </div>
+);
 };
 
 export default Menu;

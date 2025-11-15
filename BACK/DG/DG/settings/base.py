@@ -34,6 +34,7 @@ THIRD_APPS = [
     'rest_framework_simplejwt',
     'dotenv',
     'drf_spectacular',
+    'corsheaders'
 ]
 
 
@@ -41,6 +42,7 @@ INSTALLED_APPS = BASE_APPS + LOCAL_APPS + THIRD_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -98,14 +100,6 @@ REST_FRAMEWORK = {
     ),
 }
 
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'API Deligood',
-    'DESCRIPTION': 'Sistema Gestión de pedidos',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
-    # OTHER SETTINGS
-}
-
 SIMPLE_JWT = {
     'TOKEN_OBTAIN_SERIALIZER': 'apps.users.api.serializers.CustomTokenObtainPairSerializer',
 
@@ -116,6 +110,14 @@ SIMPLE_JWT = {
     #'USER_ID_CLAIM': 'user_id',
     
     #'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Deligood',
+    'DESCRIPTION': 'Sistema Gestión de pedidos',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
 }
 
 JAZZMIN_SETTINGS = {
@@ -136,6 +138,8 @@ JAZZMIN_SETTINGS = {
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
 }
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 LANGUAGE_CODE = 'es-ES'
 

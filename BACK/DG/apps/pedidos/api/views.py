@@ -1,21 +1,21 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from apps.pedidos.models import Mesa, Pedido
+from rest_framework import viewsets, status, permissions
+from apps.pedidos.models import Mesa, Pedido, ProductoPedido
 from .serializers import MesaSerializer, PedidoSerializer
 from rest_framework.decorators import action
-from rest_framework import status
 from rest_framework.response import Response
+from apps.users.api.permissions import IsAdministrador, IsMesero, IsCocina, IsOwner
 
 class MesaViewSet(viewsets.ModelViewSet):
     serializer_class = MesaSerializer
     queryset = Mesa.objects.all().order_by('numero') 
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            permission_classes = [IsAuthenticated]
+        if self.action in ['create', 'destroy']:
+            permission_classes = [IsAdministrador]
+        elif self.action in ['list', 'retrieve', 'update', 'partial_update']:
+            permission_classes = [IsAdministrador | IsMesero]
         else:
-            permission_classes = [IsAdminUser] 
-        
+            permission_classes = [permissions.IsAuthenticated] 
         return [permission() for permission in permission_classes]
 
 class PedidoViewSet(viewsets.ModelViewSet):
@@ -23,13 +23,17 @@ class PedidoViewSet(viewsets.ModelViewSet):
     queryset = Pedido.objects.all().order_by('-fecha', '-hora')
 
     def get_permissions(self):
-        if self.action in ['create', 'retrieve']:
-            permission_classes = [IsAuthenticated]
+        if self.action in ['create']:
+            permission_classes = [IsAdministrador | IsMesero]
+        elif self.action in ['list', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAdministrador]
+        elif self.action in ['retrieve']:
+            permission_classes = [IsAdministrador | IsOwner]
         else:
-            permission_classes = [IsAdminUser] 
+            permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
     
-    @action(detail=True, methods=['patch'], permission_classes=[IsAdminUser])
+    @action(detail=True, methods=['patch'], permission_classes=[IsCocina])
     def marcar_listo(self, request, pk=None):
         pedido = self.get_object()
         if pedido.estado_pedido != 'EN_ESPERA':
@@ -40,3 +44,38 @@ class PedidoViewSet(viewsets.ModelViewSet):
         pedido.estado_pedido = 'PREPARADO'
         pedido.save()
         return Response({'message': 'Pedido marcado como PREPARADO.'}, status=status.HTTP_200_OK)
+    
+    class ProductoPedidoViewSet(viewsets.ModelViewSet):
+        queryset = ProductoPedido.objects.all().order_by('id')#Editar despues
+        serializer_class = ProductoPedido
+
+        def get_permissions(self):
+            if self.action == 'create':
+                permissions_classes = [IsAdministrador | IsMesero]
+            elif self.action in ['list', 'retrieve']:
+                permissions_classes = [IsAdministrador | IsMesero | IsCocina]
+            elif self.action in ['update', 'partial_update', 'destroy']:
+                permissions_classes = [IsAdministrador | IsCocina]
+            else:
+                permissions_classes = [permissions.IsAuthenticated]
+            return [permission() for permission in permissions_classes]
+        
+        def partial_update(self, request, *args, **kwargs):
+            if request.user.rol == 'Administrador':
+                return super().partial_update(request, *args, **kwargs)
+
+            elif request.user.rol == 'cocinero':
+                data = request.data
+            
+                allowed_fields = ['estado']
+                if any(key not in allowed_fields for key in data.keys()):
+                    return Response(
+                        {'message': 'El rol Cocina solo puede modificar el campo "estado".'},
+                        status=status.HTTP_403_FORBIDDEN
+                    ) 
+                return super().partial_update(request, *args, **kwargs)
+            
+            return Response(
+                {'detail': 'No tienes permiso para realizar esta acción.'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )

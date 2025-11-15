@@ -1,5 +1,5 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework import viewsets, permissions
+from apps.users.api.permissions import IsAdministrador, IsMesero
 from apps.facturacion.models import Factura
 from .serializers import FacturaSerializer
 
@@ -8,8 +8,10 @@ class FacturaViewSet(viewsets.ModelViewSet):
     queryset = Factura.objects.all().order_by('-fecha_emision', '-hora_emision')
 
     def get_permissions(self):
-        if self.action in ['create', 'retrieve', 'list']:
-            permission_classes = [IsAuthenticated]
+        if self.action == 'create':
+            permission_classes = [IsAdministrador | IsMesero]
+        elif self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAdministrador]
         else:
-            permission_classes = [IsAdminUser] 
+            permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]

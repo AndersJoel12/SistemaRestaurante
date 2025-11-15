@@ -2,6 +2,7 @@ import '../views/ViewStyles.css'
 import Logo from '../assets/logo.png'
 import { useState } from 'react'
 import SignUpModal from '../components/ModalFormSignUp'
+import { useAuth } from '../context/AuthContext'
 
 import { useNavigate } from 'react-router-dom'
 
@@ -9,9 +10,31 @@ function Home() {
     const [showModal, setShowModal] = useState(false)
     const navigate = useNavigate()
 
-    const handleLoginSuccess = () => {
+    
+    const getRedirectPath = (role) => {
+        console.log('Esto es: ', role);
+        switch (role) {
+            case 'admin' || 'Administrador':
+                return '/Admin';
+            case 'cocinero' || 'Cocinero':
+                return '/Kitchen';
+            case 'mesero' || 'Mesero':
+                return '/Tables';
+            default:
+                return '/Menu';
+        }
+    };
+
+    const handleLoginSuccess = (role) => {
         setShowModal(false)
-        navigate('/dashboard')
+
+        if (role){    
+            navigate(getRedirectPath(role));
+            console.log("Redirigiendo a:", getRedirectPath(role));
+        } else {
+            console.log("Rol no reconocido, redirigiendo a dashboard por defecto.");
+            navigate('/dashboard');
+        }
     };
 
     return (
