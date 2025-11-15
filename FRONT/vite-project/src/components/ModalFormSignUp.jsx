@@ -1,34 +1,62 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Components.css';
+import axios from 'axios';
 
-function SignUpModal({ isOpen, onClose }) {
+const LOGIN_URL = 'http://127.0.0.1:8000/token/';
+
+function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
     const navigate = useNavigate();
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState({});
+    const [apiError, setApiError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setErrors({});
+        setApiError('');
+
+
         const newErrors = {};
-
-        if (!username.trim()) {
-        newErrors.username = 'El usuario es obligatorio';
-        }
-
-        if (!password.trim()) {
-        newErrors.password = 'La contraseña es obligatoria';
-        } else if (password.length < 6) {
-        newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
-        }
-
+        if (!username.trim()) { newErrors.username = 'El usuario es obligatorio'; }
+        if (!password.trim()) { newErrors.password = 'La contraseña es obligatoria'; } 
+        else if (password.length < 6) { newErrors.password = 'La contraseña debe tener al menos 6 caracteres'; }
+        
         if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
+            setErrors(newErrors);
+            return;
         }
+
+        setLoading(true);
+
+        try {
+            const response = await axios.post(LOGIN_URL, {
+                username: username,
+                password: password
+            });
+
+            const accessToken = response.data.access;
+            const refreshToken = response.data.refresh;
+
+            localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('refreshToken', refreshToken);
+
+            onLoginSuccess();
+        } catch (error) {
+            if (error.response) {
+                setApiError('Error de autenticación: Usuario o contraseña incorrectos.');
+            } else {
+                setApiError('Error de red: No se pudo conectar al servidor.');
+            }
+        } finally {
+            setLoading(false);
+        }
+
 
         // Si no hay errores, continúa con el envío
         setErrors({});

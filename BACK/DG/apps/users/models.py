@@ -35,6 +35,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('admin', 'Administrador'),
         ('mesero', 'Mesero'),
         ('cocinero', 'Cocinero'),
+        ('cliente', 'Cliente'),
     )
     
     username = models.CharField('Nombre de Usuario', max_length=255, unique=True)

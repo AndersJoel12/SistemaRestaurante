@@ -3,8 +3,16 @@ import Logo from '../assets/logo.png'
 import { useState } from 'react'
 import SignUpModal from '../components/ModalFormSignUp'
 
+import { useNavigate } from 'react-router-dom'
+
 function Home() {
     const [showModal, setShowModal] = useState(false)
+    const navigate = useNavigate()
+
+    const handleLoginSuccess = () => {
+        setShowModal(false)
+        navigate('/dashboard')
+    };
 
     return (
         <div className="flex items-center justify-center min-h-screen">
@@ -34,7 +42,11 @@ function Home() {
             </div>
         </div>
 
-        <SignUpModal isOpen={showModal} onClose={() => setShowModal(false)} />
+        <SignUpModal 
+            isOpen={showModal} 
+            onClose={() => setShowModal(false)}
+            onLoginSuccess={handleLoginSuccess} 
+        />
         </div>
     )
 }
