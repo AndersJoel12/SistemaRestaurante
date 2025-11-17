@@ -34,6 +34,7 @@ THIRD_APPS = [
     'rest_framework_simplejwt',
     'dotenv',
     'drf_spectacular',
+    'corsheaders'
 ]
 
 
@@ -134,6 +135,8 @@ JAZZMIN_SETTINGS = {
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
 }
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 LANGUAGE_CODE = 'es-ES'
 
