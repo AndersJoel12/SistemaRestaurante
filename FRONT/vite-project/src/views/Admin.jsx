@@ -1,21 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import MenuItem from "../components/MenuItem.jsx";
 
-// --- DATOS BASE DEL MENÚ (Copia de seguridad) ---
-const initialDishes = [
+// --- CLAVES DE CACHÉ ---
+const PLATO_KEY = "admin_platos";
+const USUARIO_KEY = "admin_usuarios";
+
+// --- DATOS INICIALES (Simulados) ---
+const initialPlatos = [
   {
     id: 101,
     category: "entradas",
     name: "Rollitos Primavera",
     price: 4.5,
-    available: true,
-  },
-  {
-    id: 102,
-    category: "entradas",
-    name: "Sopa Miso Tradicional",
-    price: 3.0,
     available: true,
   },
   {
@@ -25,30 +22,33 @@ const initialDishes = [
     price: 8.99,
     available: true,
   },
+];
+const initialUsuarios = [
   {
-    id: 204,
-    category: "sushi",
-    name: "Sashimi de Atún Fresco",
-    price: 12.0,
-    available: false,
+    id: 1,
+    inicial: "J",
+    apellido: "Pérez",
+    email: "juan@ejemplo.com",
+    rol: "Administrador",
+    activo: true,
   },
   {
-    id: 303,
-    category: "bebidas",
-    name: "Refresco Cola Grande",
-    price: 2.0,
-    available: true,
+    id: 2,
+    inicial: "A",
+    apellido: "López",
+    email: "ana@ejemplo.com",
+    rol: "Mesonero",
+    activo: true,
   },
   {
-    id: 402,
-    category: "postre",
-    name: "Helado Frito (Tempura)",
-    price: 6.5,
-    available: true,
+    id: 3,
+    inicial: "M",
+    apellido: "Ruiz",
+    email: "maria@ejemplo.com",
+    rol: "Cocinero",
+    activo: false,
   },
 ];
-
-// Categorías disponibles
 const categories = [
   { id: "entradas", name: "Entradas" },
   { id: "sushi", name: "Sushi" },
@@ -56,258 +56,537 @@ const categories = [
   { id: "postre", name: "Postre" },
 ];
 
-// Componente para el formulario de edición/creación
-const DishForm = ({ initialData, categories, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({
-    name: initialData.name || "",
-    price: initialData.price || 0,
-    category: initialData.category || categories[0].id,
-    available: initialData.available ?? true,
-  });
+// --- FUNCIONES DE PERSISTENCIA (Cache) ---
+const loadData = (key, initialData) => {
+  const savedData = localStorage.getItem(key);
+  // Si no hay datos guardados, retorna los iniciales.
+  if (!savedData) return initialData;
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : name === "price"
-          ? parseFloat(value) || 0
-          : value,
-    }));
-  };
+  const parsedData = JSON.parse(savedData);
+  return parsedData;
+};
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({ ...initialData, ...formData });
-  };
+const saveData = (key, data) => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
 
+// --- Componente de Mensajes ---
+const MessageAlert = ({ msg }) => {
+  if (!msg) return null;
+  const color =
+    msg.type === "error"
+      ? "bg-red-100 text-red-800 border-red-400"
+      : msg.type === "warning"
+      ? "bg-yellow-100 text-yellow-800 border-yellow-400"
+      : "bg-green-100 text-green-800 border-green-400";
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Nombre
-        </label>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Precio ($)
-        </label>
-        <input
-          type="number"
-          name="price"
-          value={formData.price}
-          onChange={handleChange}
-          min="0"
-          step="0.01"
-          required
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Categoría
-        </label>
+    <div className={`p-3 mb-4 rounded ${color} font-medium border-l-4`}>
+      {msg.text}
+    </div>
+  );
+};
+
+// --- Componente de Campo de Entrada Estable (CORRECCIÓN CLAVE para el foco) ---
+// Se mueve fuera del componente Admin para evitar re-renderizados que pierden el foco.
+const InputField = React.memo(
+  ({
+    label,
+    name,
+    type = "text",
+    options = null,
+    maxLength = undefined,
+    value,
+    onChange,
+  }) => (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-700 capitalize">
+        {label}
+      </label>
+      {type === "select" ? (
         <select
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          required
+          name={name}
+          value={value || ""}
+          onChange={(e) => onChange(name, e.target.value)}
           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
         >
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name.toUpperCase()}
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
             </option>
           ))}
         </select>
-      </div>
-      <div className="flex items-center">
+      ) : (
         <input
-          id="available"
-          type="checkbox"
-          name="available"
-          checked={formData.available}
-          onChange={handleChange}
-          className="h-4 w-4 text-red-700 border-gray-300 rounded"
+          type={type}
+          name={name}
+          value={value || ""}
+          onChange={(e) => onChange(name, e.target.value)}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+          maxLength={maxLength}
         />
-        <label htmlFor="available" className="ml-2 block text-sm text-gray-900">
-          Disponible
-        </label>
-      </div>
-      <div className="flex justify-end space-x-3 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-600 font-semibold"
-        >
-          {initialData.id ? "Guardar Edición" : "Crear Plato"}
-        </button>
-      </div>
-    </form>
-  );
-};
+      )}
+    </div>
+  )
+);
 
 const Admin = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Carga los platos: usa el "caché" si el menú lo ha devuelto, o los datos base.
-  const cachedDishes = location.state?.dishes || initialDishes; // Estado local de los platos en el Admin (el "caché" en edición)
-  const [dishes, setDishes] = useState(cachedDishes);
-  const [dishData, setDishData] = useState(null);
-  const [activeCategory, setActiveCategory] = useState("entradas");
+  // --- ESTADOS DE DATOS PRINCIPALES (Carga desde caché) ---
+  const [platos, setPlatos] = useState(() =>
+    loadData(PLATO_KEY, initialPlatos)
+  );
+  const [usuarios, setUsuarios] = useState(() =>
+    loadData(USUARIO_KEY, initialUsuarios)
+  );
 
-  // Sincroniza el estado local con el caché al navegar al Admin
+  // --- ESTADOS DE UI Y EDICIÓN ---
+  const [activeTab, setActiveTab] = useState("menu");
+  const [editingItem, setEditingItem] = useState(null);
+  const [message, setMessage] = useState(null);
+
+  // 1. Garantizar que los datos de prueba se guarden si el caché está vacío en la primera carga
   useEffect(() => {
-    setDishes(cachedDishes);
-  }, [cachedDishes]); // ---------------------------------------------------- // Lógica CRUD // ----------------------------------------------------
+    const cachedPlatos = localStorage.getItem(PLATO_KEY);
+    // Comprueba si el caché no existe o si está vacío después de parsear
+    if (!cachedPlatos || JSON.parse(cachedPlatos).length === 0) {
+      saveData(PLATO_KEY, initialPlatos);
+      setPlatos(initialPlatos);
+    }
 
-  const handleCreateNew = () => {
-    setDishData({
-      name: "",
-      category: categories[0].id,
-      price: 0,
-      available: true,
-      id: null,
-    });
-  };
+    const cachedUsuarios = localStorage.getItem(USUARIO_KEY);
+    if (!cachedUsuarios || JSON.parse(cachedUsuarios).length === 0) {
+      saveData(USUARIO_KEY, initialUsuarios);
+      setUsuarios(initialUsuarios);
+    }
+  }, []);
 
-  const handleEdit = (dish) => {
-    setDishData({ ...dish, price: Number(dish.price) });
-  };
+  // Sincroniza el estado de Platos si viene del componente Menú
+  useEffect(() => {
+    if (location.state?.dishes) {
+      setPlatos(location.state.dishes);
+      saveData(PLATO_KEY, location.state.dishes);
+    }
+  }, [location.state?.dishes]);
+
+  // 2. MANEJADOR DE CAMBIOS ESTABLE (evita la pérdida de foco)
+  const handleFormChange = useCallback((name, value) => {
+    setEditingItem((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  // --- LÓGICA CRUD GENÉRICA CON VALIDACIÓN ---
 
   const handleSave = (data) => {
-    setDishData(null);
-    if (data.id) {
-      // ACTUALIZAR
-      setDishes((prev) => prev.map((d) => (d.id === data.id ? data : d)));
-    } else {
-      // CREAR
-      const newId = Date.now();
-      const newDish = { ...data, id: newId };
-      setDishes((prev) => [...prev, newDish]);
+    const itemType = activeTab;
+    let list, setList, key, itemName;
+
+    if (itemType === "menu") {
+      list = platos;
+      setList = setPlatos;
+      key = PLATO_KEY;
+      itemName = "Plato";
+    } else if (itemType === "usuarios") {
+      list = usuarios;
+      setList = setUsuarios;
+      key = USUARIO_KEY;
+      itemName = "Usuario";
+
+      // --- VALIDACIONES ESPECÍFICAS DE USUARIO ---
+      if (
+        !data.inicial ||
+        data.inicial.trim() === "" ||
+        data.inicial.trim().length > 1
+      ) {
+        setMessage({
+          type: "error",
+          text: "La Inicial debe ser una sola letra y no puede estar vacía.",
+        });
+        return;
+      }
+      if (!data.apellido || data.apellido.trim() === "") {
+        setMessage({
+          type: "error",
+          text: "El Apellido no puede estar vacío.",
+        });
+        return;
+      }
+      if (!data.email || data.email.trim() === "") {
+        setMessage({ type: "error", text: "El Email no puede estar vacío." });
+        return;
+      }
+
+      data.activo = data.activo === "true" || data.activo === true;
     }
+
+    if (data.id) {
+      // UPDATE
+      const updatedList = list.map((item) =>
+        item.id === data.id ? data : item
+      );
+      setList(updatedList);
+      saveData(key, updatedList);
+      setMessage({
+        type: "success",
+        text: `${itemName} actualizado con éxito.`,
+      });
+    } else {
+      // CREATE
+      const newId = Date.now();
+      const newItem = {
+        ...data,
+        id: newId,
+        activo: true,
+        inicial: data.inicial.trim().toUpperCase(),
+        apellido: data.apellido.trim(),
+      };
+      const newList = [...list, newItem];
+      setList(newList);
+      saveData(key, newList);
+      setMessage({ type: "success", text: `${itemName} creado con éxito.` });
+    }
+    setEditingItem(null);
   };
 
-  const handleDelete = (dishId) => {
-    const confirmation = window.prompt(
-      `Escribe 'CONFIRMAR' para eliminar el plato con ID ${dishId}.`
-    );
-    if (confirmation !== "CONFIRMAR") return;
-    setDishes((prev) => prev.filter((d) => d.id !== dishId));
-    setDishData(null);
+  const handleEdit = (item) => {
+    setMessage(null);
+    const itemData =
+      activeTab === "usuarios"
+        ? { ...item, activo: item.activo ? "true" : "false" }
+        : item;
+    setEditingItem(itemData);
   };
 
-  // FUNCIÓN CLAVE: "Publica" el menú modificado al cliente
+  const handleDelete = (itemId) => {
+    const itemType = activeTab;
+    let list, setList, key, itemName;
+
+    if (itemType === "menu") {
+      list = platos;
+      setList = setPlatos;
+      key = PLATO_KEY;
+      itemName = "Plato";
+    } else if (itemType === "usuarios") {
+      list = usuarios;
+      setList = setUsuarios;
+      key = USUARIO_KEY;
+      itemName = "Usuario";
+    }
+
+    if (
+      window.confirm(
+        `¿Seguro que quieres eliminar ${itemName} con ID ${itemId}?`
+      )
+    ) {
+      const updatedList = list.filter((item) => item.id !== itemId);
+      setList(updatedList);
+      saveData(key, updatedList);
+      setMessage({ type: "warning", text: `${itemName} eliminado del caché.` });
+    }
+    setEditingItem(null);
+  };
+
   const applyChangesToMenu = () => {
-    // Navega a la ruta /menu y pasa el array 'dishes' modificado en el estado de navegación.
-    navigate("/menu", {
-      state: {
-        dishes: dishes,
-        tableId: location.state?.tableId || "X",
-      },
-    });
+    navigate("/menu", { state: { dishes: platos } });
   };
 
-  // --- Renderizado ---
-  const filteredDishes = dishes.filter((d) => d.category === activeCategory);
+  const handleCreateNew = () => {
+    setMessage(null);
+    let newItem = {};
 
+    if (activeTab === "menu") {
+      newItem = {
+        name: "",
+        category: categories[0].id,
+        price: 0,
+        available: true,
+        id: null,
+      };
+    } else if (activeTab === "usuarios") {
+      newItem = {
+        inicial: "",
+        apellido: "",
+        email: "",
+        rol: "Mesonero",
+        activo: "true",
+        id: null,
+      };
+    }
+    setEditingItem(newItem);
+  };
+
+  // --- RENDERS DE TABLAS ESPECÍFICAS ---
+
+  const renderTableContent = () => {
+    if (activeTab === "menu") {
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* FILTRO DE SEGURIDAD: Solo mapea elementos válidos (con un ID) */}
+          {platos
+            .filter((dish) => dish && dish.id)
+            .map((dish) => (
+              <MenuItem
+                key={dish.id}
+                dish={dish}
+                isAdmin={true}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ))}
+          {platos.length === 0 && (
+            <p className="col-span-full text-center text-gray-500 py-8">
+              No hay platos registrados.
+            </p>
+          )}
+        </div>
+      );
+    } else if (activeTab === "usuarios") {
+      return (
+        <div className="overflow-x-auto bg-white rounded-xl shadow-md">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr className="text-gray-600 uppercase text-sm leading-normal">
+                <th className="py-3 px-6 text-left">ID</th>
+                <th className="py-3 px-6 text-left">Inicial</th>
+                <th className="py-3 px-6 text-left">Apellido</th>
+                <th className="py-3 px-6 text-left">Email</th>
+                <th className="py-3 px-6 text-left">Rol</th>
+                <th className="py-3 px-6 text-center">Estado</th>
+                <th className="py-3 px-6 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-800 text-sm font-light divide-y divide-gray-200">
+              {usuarios.map((user) => (
+                <tr
+                  key={user.id}
+                  className="border-b border-gray-200 hover:bg-gray-50"
+                >
+                  <td className="py-3 px-6 text-left whitespace-nowrap">
+                    {user.id}
+                  </td>
+                  <td className="py-3 px-6 text-left font-bold">
+                    {user.inicial}
+                  </td>
+                  <td className="py-3 px-6 text-left">{user.apellido}</td>
+                  <td className="py-3 px-6 text-left">{user.email}</td>
+                  <td className="py-3 px-6 text-left font-medium">
+                    {user.rol}
+                  </td>
+                  <td className="py-3 px-6 text-center">
+                    <span
+                      className={`py-1 px-3 rounded-full text-xs font-semibold ${
+                        user.activo
+                          ? "bg-green-200 text-green-600"
+                          : "bg-red-200 text-red-600"
+                      }`}
+                    >
+                      {user.activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-6 text-center space-x-2">
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="text-indigo-600 hover:text-indigo-900 font-medium transition"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDelete(user.id)}
+                      className="text-red-600 hover:text-red-900 font-medium transition"
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {usuarios.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="text-center text-gray-500 py-8">
+                    No hay usuarios registrados en el caché.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // --- Renderizado de Formularios Específicos ---
+
+  const renderForm = () => {
+    if (!editingItem) return null;
+
+    const isNew = editingItem.id === null;
+    const currentItemType = activeTab;
+    const title = isNew
+      ? `Crear Nuevo ${currentItemType === "menu" ? "PLATO" : "USUARIO"}`
+      : `Editar ${currentItemType === "menu" ? "PLATO" : "USUARIO"}`;
+
+    const UserForm = (
+      <>
+        <div className="flex space-x-4">
+          <div className="w-1/4">
+            <InputField
+              label="Inicial (1ra letra)"
+              name="inicial"
+              maxLength={1}
+              value={editingItem.inicial}
+              onChange={handleFormChange}
+            />
+          </div>
+          <div className="w-3/4">
+            <InputField
+              label="Apellido(s)"
+              name="apellido"
+              value={editingItem.apellido}
+              onChange={handleFormChange}
+            />
+          </div>
+        </div>
+        <InputField
+          label="Email (Acceso)"
+          name="email"
+          type="email"
+          value={editingItem.email}
+          onChange={handleFormChange}
+        />
+
+        <InputField
+          label="Rol"
+          name="rol"
+          type="select"
+          options={["Administrador", "Mesonero", "Cocinero", "Cajero"]}
+          value={editingItem.rol}
+          onChange={handleFormChange}
+        />
+        {!isNew && (
+          <InputField
+            label="Estado de Cuenta"
+            name="activo"
+            type="select"
+            options={["true", "false"]}
+            value={editingItem.activo}
+            onChange={handleFormChange}
+          />
+        )}
+      </>
+    );
+
+    const MenuForm = (
+      <>
+        <InputField
+          label="Nombre del Plato"
+          name="name"
+          value={editingItem.name}
+          onChange={handleFormChange}
+        />
+        <InputField
+          label="Precio"
+          name="price"
+          type="number"
+          value={editingItem.price}
+          onChange={handleFormChange}
+        />
+        <InputField
+          label="Categoría"
+          name="category"
+          type="select"
+          options={categories.map((c) => c.id)}
+          value={editingItem.category}
+          onChange={handleFormChange}
+        />
+        <InputField
+          label="Disponible"
+          name="available"
+          type="select"
+          options={["true", "false"]}
+          value={editingItem.available}
+          onChange={handleFormChange}
+        />
+      </>
+    );
+
+    return (
+      <div className="mb-8 p-6 bg-white rounded-xl shadow-2xl border-t-4 border-red-500">
+        <h2 className="text-2xl font-bold mb-4 text-gray-700">{title}</h2>
+        <div className="space-y-4">
+          {currentItemType === "usuarios" ? UserForm : MenuForm}
+
+          <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
+            <button
+              type="button"
+              onClick={() => setEditingItem(null)}
+              className="px-6 py-2 border rounded-lg text-gray-700 hover:bg-gray-100 transition"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave(editingItem)}
+              className="px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-600 font-semibold transition"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // --- RENDER PRINCIPAL ---
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-                 {" "}
-      <header className="mb-8 flex justify-between items-center">
-                       {" "}
+      <header className="mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-md">
         <h1 className="text-4xl font-extrabold text-red-800">
           Panel de Administración
         </h1>
-                       {" "}
         <div className="flex space-x-3">
-          <button
-            onClick={applyChangesToMenu}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors"
-          >
-                                    Aplicar Cambios al Menú                    {" "}
-          </button>
-                             {" "}
+          {activeTab === "menu" && (
+            <button
+              onClick={applyChangesToMenu}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors"
+            >
+              Aplicar Cambios al Menú
+            </button>
+          )}
           <button
             onClick={handleCreateNew}
             className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-colors"
           >
-                                    + Nuevo Plato                    {" "}
+            + Crear Nuevo {activeTab === "menu" ? "PLATO" : "USUARIO"}
           </button>
         </div>
-                   {" "}
       </header>
-                  {/* Formulario de Creación/Edición */}           {" "}
-      {dishData && (
-        <div className="mb-8 p-6 bg-white rounded-xl shadow-2xl border-t-4 border-red-500">
-                             {" "}
-          <h2 className="text-2xl font-bold mb-4 text-gray-700">
-                                   {" "}
-            {dishData.id
-              ? `Editar Plato ID: ${dishData.id}`
-              : "Crear Nuevo Plato"}
-                               {" "}
-          </h2>
-                             {" "}
-          <DishForm
-            initialData={dishData}
-            categories={categories}
-            onSave={handleSave}
-            onCancel={() => setDishData(null)}
-          />
-                         {" "}
-        </div>
-      )}
-      <nav className="flex justify-center space-x-2 bg-red-700 text-white p-2 rounded-t-xl mb-4">
-        {categories.map((cat) => (
+
+      <MessageAlert msg={message} />
+
+      {/* PESTAÑAS (Botones de Navegación) */}
+      <nav className="flex space-x-8 bg-red-800 text-white p-3 rounded-t-xl mb-6 shadow-lg">
+        {["menu", "usuarios"].map((tab) => (
           <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-4 py-1 text-sm font-bold transition-colors rounded-lg ${
-              activeCategory === cat.id
-                ? "bg-yellow-400 text-red-900"
+            key={tab}
+            onClick={() => {
+              setActiveTab(tab);
+              setEditingItem(null);
+              setMessage(null);
+            }}
+            className={`px-6 py-2 text-xl font-bold transition-colors uppercase ${
+              activeTab === tab
+                ? "bg-yellow-400 text-red-900 rounded-md shadow-inner"
                 : "hover:bg-red-600"
             }`}
           >
-            {cat.name} ({dishes.filter((d) => d.category === cat.id).length})
+            {tab}
           </button>
         ))}
       </nav>
-                              {/* Listado de Platos */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredDishes.length === 0 && (
-          <p className="col-span-full text-center text-gray-500 py-8">
-            No hay platos en esta categoría.
-          </p>
-        )}
-        {filteredDishes.map((dish) => (
-          <MenuItem
-            key={dish.id}
-            dish={dish}
-            isAdmin={true}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        ))}
-      </div>
-             {" "}
+
+      {renderForm()}
+
+      {renderTableContent()}
     </div>
   );
 };
