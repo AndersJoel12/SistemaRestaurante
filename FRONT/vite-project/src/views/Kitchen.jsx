@@ -107,9 +107,9 @@ const Kitchen = () => {
 return (
   <div className="min-h-screen bg-gray-100">
     {/* Encabezado fijo */}
-    <div className="top-0 bg-red-800 text-white z-20">
-      <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400">
-        COCINA
+    <div className="bg-red-800 text-white p-4 rounded-lg shadow-xl mb-6">
+      <h1 className="text-3xl font-extrabold text-center text-yellow-400">
+        Cocina
       </h1>
     </div>
 

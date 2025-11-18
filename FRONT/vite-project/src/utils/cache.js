@@ -23,7 +23,7 @@ export const initialPlatos = [
 export const initialUsuarios = [
   {
     id: 1,
-    inicial: "J",
+    usuario: "Jperez",
     apellido: "Pérez",
     email: "juan@ejemplo.com",
     rol: "Administrador",
@@ -31,7 +31,7 @@ export const initialUsuarios = [
   },
   {
     id: 2,
-    inicial: "A",
+    usuario: "Alopez",
     apellido: "López",
     email: "ana@ejemplo.com",
     rol: "Mesonero",
