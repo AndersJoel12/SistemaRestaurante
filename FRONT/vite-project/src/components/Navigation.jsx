@@ -26,8 +26,14 @@ function NavBar() {
         <Link to="/kitchen" className="flex flex-col items-center hover:text-red-600 transition py-2">
           <span>Cocina</span>
         </Link>
-        <Link to="/admin" className="flex flex-col items-center hover:text-red-600 transition py-2">
+        {/*<Link to="/admin" className="flex flex-col items-center hover:text-red-600 transition py-2">
           <span>Admin</span>
+        </Link>*/}
+        <Link to="/users" className="flex flex-col items-center hover:text-red-600 transition py-2">
+          <span>Usuarios</span>
+        </Link>
+        <Link to="/products" className="flex flex-col items-center hover:text-red-600 transition py-2">
+          <span>Productos</span>
         </Link>
       </div>
     </div>

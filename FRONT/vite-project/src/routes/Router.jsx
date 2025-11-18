@@ -8,6 +8,9 @@ const Kitchen = lazy(() => import("../views/Kitchen"));
 const Admin = lazy(() => import("../views/Admin"));
 const Tables = lazy(() => import("../views/Tables"));
 
+const GestionMenu = lazy(() => import("../views/ManageMenu"));
+const GestionUsuarios = lazy(() => import("../views/ManageUsers"));
+
 
 function AppRouter() {
   return (
@@ -24,8 +27,14 @@ function AppRouter() {
         <Route path="/menu" element={<Menu />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/kitchen" element={<Kitchen />} />
-        <Route path="/admin" element={<Admin />} />
+
+        {/*<Route path="/admin" element={<Admin />} />*/}
+
         <Route path="/tables" element={<Tables />} />
+
+        <Route path="/users" element={<GestionUsuarios />} />
+        <Route path="/products" element={<GestionMenu />} />
+
       </Routes>
     </Suspense>
   );
