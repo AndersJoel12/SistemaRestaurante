@@ -15,6 +15,11 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 
 class ProductoSerializer(serializers.ModelSerializer):
+    categoria = serializers.CharField(
+        source='categoria.nombre',
+        read_only=True
+    )
+    
     categoria_id = serializers.PrimaryKeyRelatedField(
         source='categoria',
         queryset=Categoria.objects.all(),
@@ -25,16 +30,13 @@ class ProductoSerializer(serializers.ModelSerializer):
         model = Producto
         fields = (
             'id',
-            'imagen',
             'nombre',
+            'imagen',
             'descripcion',
             'precio',
             'disponible',
             'categoria',
             'categoria_id',
-            'created_at',
-            'updated_at',
-            'state'
             )
         read_only_fields = ('id', 'created_at', 'updated_at', 'state')
 

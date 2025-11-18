@@ -34,7 +34,7 @@ THIRD_APPS = [
     'rest_framework_simplejwt',
     'dotenv',
     'drf_spectacular',
-    'corsheaders'
+    'corsheaders',
 ]
 
 
@@ -42,9 +42,11 @@ INSTALLED_APPS = BASE_APPS + LOCAL_APPS + THIRD_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -99,6 +101,16 @@ REST_FRAMEWORK = {
     ),
 }
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    
+    'USER_ID_FIELD': 'id', 
+    'USER_ID_CLAIM': 'user_id',
+    
+    #'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+}
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API Deligood',
     'DESCRIPTION': 'Sistema Gestión de pedidos',
@@ -107,15 +119,6 @@ SPECTACULAR_SETTINGS = {
     # OTHER SETTINGS
 }
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    
-    'USER_ID_FIELD': 'id', 
-    'USER_ID_CLAIM': 'user_id',
-    
-    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-}
 
 JAZZMIN_SETTINGS = {
     "site_title": "DeliGood | Restaurante", 

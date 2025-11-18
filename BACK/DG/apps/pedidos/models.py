@@ -67,7 +67,7 @@ class ProductoPedido(BaseModel):
     precio_unit  = models.DecimalField('Precio Unitario del Producto', max_digits=10, decimal_places=2)
     observacion  = models.TextField('Observación del Producto', max_length=500, null=True, blank=True)
     subtotal     = models.DecimalField('Subtotal del Producto', max_digits=10, decimal_places=2)
-    estado = models.CharField('Estado del Producto', max_length=10, choices=ESTADOS_ITEM, default='PENDIENTE')
+    estado       = models.CharField('Estado del Producto', max_length=10, choices=ESTADOS_ITEM, default='PENDIENTE')
 
     class Meta:
         verbose_name = 'Producto del Pedido'

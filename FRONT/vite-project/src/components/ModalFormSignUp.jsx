@@ -1,22 +1,31 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import axios from 'axios';
+import { useAuth } from "../context/AuthContext";
+import { jwtDecode } from 'jwt-decode';
 // Se eliminó la importación problemática: import './Components.css';
 
-function SignUpModal({ isOpen, onClose }) {
-  const navigate = useNavigate();
+const LOGIN_URL = 'http://localhost:8000/token/';
+
+function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
+  const { loginUser } = useAuth();
 
   // Estado para Correo y Contraseña
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState("");
+  const [loanding, setLoanding] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newErrors = {};
+    setErrors({});
+    setApiError("");
 
     // Validaciones
+    const newErrors = {};
     if (!email.trim() || !email.includes("@")) {
       newErrors.email = "Debe ingresar un correo electrónico válido.";
     }
@@ -32,12 +41,51 @@ function SignUpModal({ isOpen, onClose }) {
       return;
     }
 
-    // Simulación de inicio de sesión exitoso
-    setErrors({});
-    console.log(`Iniciando sesión con Correo: ${email}`);
-    onClose(); // Cierra el modal
-    navigate("/menu");
-  };
+    setLoanding(true);  
+
+  try {
+    const response = await axios.post(LOGIN_URL, {
+      email: email,
+      password: password
+    });
+    
+    const data = response.data;
+
+    const accessToken = data.access;
+
+    if (accessToken) {
+      const decodedToken = jwtDecode(accessToken);
+      console.log(decodedToken);
+      const role = decodedToken.rol;
+
+      loginUser(data); // Actualiza el contexto de autenticación
+
+      if (onLoginSuccess) {
+        onLoginSuccess(role); // Notifica al componente padre sobre el inicio de sesión exitoso
+      }
+
+      setEmail('');
+      setPassword('');
+      setErrors('');
+      setErrors({});
+      onClose();
+
+    } else {
+      setApiError("Respuesta inválida del servidor.");
+    }   
+  } catch (error) {
+    if (error.response && error.response.status === 401) {
+      setApiError("Correo electrónico o contraseña incorrectos.");
+    } else if (error.request) {
+      setApiError("Error del servidor. Por favor, inténtelo de nuevo más tarde.");
+    } else {
+      setApiError('Error inesperado: ' + error.message);
+    }
+  } finally {
+    setLoanding(false);
+  }
+}
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -48,7 +96,11 @@ function SignUpModal({ isOpen, onClose }) {
 
       <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10 transform transition-all duration-300 opacity-100 scale-100">
         <h2 className="text-xl font-bold text-red-600 mb-4">Iniciar Sesión</h2>
-
+        {apiError && (
+                <div className="text-red-600 text-sm mb-4 p-2 bg-red-100 border border-red-300 rounded">
+                    {apiError}
+                </div>
+        )}
         <form className="space-y-4 text-left" onSubmit={handleSubmit}>
           {/* --- CAMPO DE CORREO ELECTRÓNICO --- */}
           <div>
@@ -102,6 +154,7 @@ function SignUpModal({ isOpen, onClose }) {
 
           <button
             type="submit"
+            disabled={loanding}
             className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition cursor-pointer"
           >
             Acceder

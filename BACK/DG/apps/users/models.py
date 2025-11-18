@@ -32,9 +32,10 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     roles = (
-        ('admin', 'Administrador'),
+        ('administrador', 'Administrador'),
         ('mesero', 'Mesero'),
         ('cocinero', 'Cocinero'),
+        ('cliente', 'Cliente'),
     )
     
     username = models.CharField('Nombre de Usuario', max_length=255, unique=True)
@@ -49,7 +50,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField('Estado', default=True)
     is_staff = models.BooleanField('personal', default=False)
 
-    ##historical = HistoricalRecords()
+    historical = HistoricalRecords()
 
     objects = UserManager()
 
@@ -58,8 +59,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = 'Empleados'
         db_table = 'usuario'
 
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email', 'name', 'last_name', 'cedula']
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['name', 'last_name', 'cedula']
 
     def __str__(self):
         return f'{self.name} {self.last_name}'
