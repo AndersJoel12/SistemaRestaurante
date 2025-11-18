@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 const STORAGE_KEY = "kitchen_kanban";
 
-const Orders= () => {
+const Orders = () => {
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
@@ -35,7 +35,9 @@ const Orders= () => {
             <p className="text-sm text-gray-600">
               {orden.timestamp} — Subtotal: ${orden.subtotal}
             </p>
-            <p className="text-sm font-medium">Estado: {orden.status || "Recibido"}</p>
+            <p className="text-sm font-medium">
+              Estado: {orden.status || "Recibido"}
+            </p>
             <ul className="ml-4 list-disc text-sm mt-2">
               {orden.items.map((it) => (
                 <li key={it.id}>
@@ -51,4 +53,3 @@ const Orders= () => {
 };
 
 export default Orders;
-

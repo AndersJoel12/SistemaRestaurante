@@ -104,46 +104,49 @@ const Kitchen = () => {
     );
   };
 
-return (
-  <div className="min-h-screen bg-gray-100">
-    {/* Encabezado fijo */}
-    <div className="top-0 bg-red-800 text-white z-20">
-      <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400">
-        COCINA
-      </h1>
-    </div>
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Encabezado fijo */}
+      <div className="top-0 bg-red-800 text-white z-20">
+        <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400">
+          COCINA
+        </h1>
+      </div>
 
-    {/* Contenido Kanban */}
-    <div className="flex flex-col md:flex-row gap-4 p-4">
-      {estadosOrdenados.map((estado) => (
-        <div key={estado} className="flex-1 bg-white rounded-lg shadow-md p-4">
-          <h2 className="text-lg font-bold mb-4 capitalize">{estado}</h2>
-          <div className="space-y-2">
-            {kanbanData[estado].map((orden, index) => (
-              <div
-                key={orden.id}
-                className="p-3 bg-yellow-100 border border-yellow-400 rounded-md text-gray-800"
-              >
-                <p className="font-bold">Orden #{orden.id}</p>
-                <p className="text-sm text-gray-600">
-                  {orden.timestamp} — Subtotal: ${orden.subtotal}
-                </p>
-                <ul className="ml-4 list-disc text-sm">
-                  {orden.items.map((it) => (
-                    <li key={it.id}>
-                      {it.quantity}x {it.name}
-                    </li>
-                  ))}
-                </ul>
-                {renderBotones(estado, index)}
-              </div>
-            ))}
+      {/* Contenido Kanban */}
+      <div className="flex flex-col md:flex-row gap-4 p-4">
+        {estadosOrdenados.map((estado) => (
+          <div
+            key={estado}
+            className="flex-1 bg-white rounded-lg shadow-md p-4"
+          >
+            <h2 className="text-lg font-bold mb-4 capitalize">{estado}</h2>
+            <div className="space-y-2">
+              {kanbanData[estado].map((orden, index) => (
+                <div
+                  key={orden.id}
+                  className="p-3 bg-yellow-100 border border-yellow-400 rounded-md text-gray-800"
+                >
+                  <p className="font-bold">Orden #{orden.id}</p>
+                  <p className="text-sm text-gray-600">
+                    {orden.timestamp} — Subtotal: ${orden.subtotal}
+                  </p>
+                  <ul className="ml-4 list-disc text-sm">
+                    {orden.items.map((it) => (
+                      <li key={it.id}>
+                        {it.quantity}x {it.name}
+                      </li>
+                    ))}
+                  </ul>
+                  {renderBotones(estado, index)}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-);
-}
+  );
+};
 
 export default Kitchen;
