@@ -30,11 +30,11 @@ LOCAL_APPS = [
 
 THIRD_APPS = [
     'rest_framework',
-    'corsheaders',
     'simple_history',
     'rest_framework_simplejwt',
     'dotenv',
     'drf_spectacular',
+    'corsheaders',
 ]
 
 
@@ -101,6 +101,16 @@ REST_FRAMEWORK = {
     ),
 }
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    
+    #'USER_ID_FIELD': 'id', 
+    #'USER_ID_CLAIM': 'user_id',
+    
+    #'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+}
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'API Deligood',
     'DESCRIPTION': 'Sistema Gestión de pedidos',
@@ -109,15 +119,6 @@ SPECTACULAR_SETTINGS = {
     # OTHER SETTINGS
 }
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    
-    'USER_ID_FIELD': 'id', 
-    'USER_ID_CLAIM': 'user_id',
-    
-    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-}
 
 JAZZMIN_SETTINGS = {
     "site_title": "DeliGood | Restaurante", 
@@ -139,8 +140,6 @@ JAZZMIN_SETTINGS = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
-
-CORS_ALLOW_CREDENTIALS = True
 
 LANGUAGE_CODE = 'es-ES'
 
