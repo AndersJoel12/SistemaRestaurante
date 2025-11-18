@@ -5,7 +5,7 @@ import InputField from "../components/InputField.jsx";
 
 // --- ¡CORRECCIÓN! ---
 // La URL base de tu API, sin endpoints específicos
-const API_URL = 'http://127.0.0.1:8000/api/platos'; 
+const API_URL = 'http://localhost:8000/api/productos'; 
 // Asegúrate de que tu API de Django esté corriendo en 'http://localhost:8000'
 
 const categories = [
