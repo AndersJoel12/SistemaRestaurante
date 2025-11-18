@@ -4,6 +4,7 @@ from apps.base.models import BaseModel
 # Modelo de Producto --ListoAparentemente 4:10am 12/11/25--
 class Producto(BaseModel):
     nombre       = models.CharField('Nombre del Producto', max_length=100)
+    imagen       = models.ImageField('Imagen del Producto', upload_to='media/productos/', null=True, blank=True)
     descripcion  = models.TextField('Descripción del Producto', max_length=500, null=True, blank=True)
     precio       = models.DecimalField('Precio del Producto', max_digits=10, decimal_places=2)
     disponible   = models.BooleanField('Disponibilidad', default=False)

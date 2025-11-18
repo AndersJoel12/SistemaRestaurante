@@ -1,13 +1,6 @@
 import React from "react";
 
-const MenuItem = ({
-  dish,
-  activeOrder,
-  setActiveOrder,
-  isAdmin = false,
-  onEdit,
-  onDelete,
-}) => {
+const MenuItem = ({ dish, activeOrder, setActiveOrder }) => {
   // --- Lógica de Cliente (Cantidad) ---
   const itemInOrder = Array.isArray(activeOrder)
     ? activeOrder.find((item) => item.id === dish.id)
@@ -33,12 +26,21 @@ const MenuItem = ({
     }
   };
 
-  // --- Estilos y Renderizado ---
-  const cardClasses = `bg-white p-4 rounded-xl shadow-lg transform transition duration-300 ${
-    dish.available
-      ? "hover:shadow-2xl hover:-translate-y-1"
-      : "opacity-50 cursor-not-allowed grayscale"
-  }`;
+  // -------------------------------------------------------------------------------------------------------
+  // Estilos y Renderizado
+  // ---------------------------------------------------------------------------------------------------
+  const cardClasses = `
+    flex flex-col max-h-100 
+    justify-between bg-white 
+    p-4 rounded-xl shadow-lg 
+    transform transition duration-300 
+    ${
+      dish.available
+        ? "hover:shadow-2xl hover:-translate-y-1"
+        : "opacity-50 cursor-not-allowed grayscale"
+    }
+  `;
+
   const buttonClass =
     "w-8 h-8 rounded-full text-white font-bold transition-transform transform hover:scale-110 shadow-md";
 
@@ -55,9 +57,11 @@ const MenuItem = ({
   );
 
   const renderClientMode = () => (
-    <div className="flex items-center justify-between mt-3">
-      <span className="text-xl font-extrabold text-red-700">
-        ${dish.price.toFixed(2)}
+    <div className="flex items-center justify-between mt-3 p-2">
+      <span className="flex text-xl font-extrabold text-black">
+        <span className="text-red-700">$</span>
+        {dish.price.toFixed(2)}
+        <span className="text-red-700 ml-1">Ref</span>
       </span>
 
       {dish.available ? (
@@ -68,7 +72,7 @@ const MenuItem = ({
               className={`${buttonClass} bg-red-500 hover:bg-red-600`}
               aria-label={`Quitar uno de ${dish.name}`}
             >
-              −
+              -
             </button>
           )}
           {quantity > 0 && (
@@ -90,44 +94,40 @@ const MenuItem = ({
     </div>
   );
 
-  const renderAdminMode = () => (
-    <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
-      {getAvailabilityStatus()}
-      <div className="space-x-2">
-        <button
-          onClick={() => onEdit(dish)}
-          className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          Editar
-        </button>
-        <button
-          onClick={() => onDelete(dish.id)}
-          className="text-sm font-semibold text-red-600 hover:text-red-800 transition-colors"
-        >
-          Eliminar
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className={cardClasses}>
-      <div className="flex justify-between items-start">
-        <h3 className="text-lg font-bold text-gray-800 leading-tight">
-          {dish.name}
-        </h3>
-        <span className="text-xs text-red-500 font-medium ml-2 uppercase">
-          {dish.category}
-        </span>
+      {/* --- 2. Imagen del Plato (Elemento Superior) --- */}
+      <div className="mb-3">
+        <img
+          src={
+            dish.image ||
+            "https://tse3.mm.bing.net/th/id/OIP.k1cTgSGBj2CQKH2JzXBdSgHaE7?rs=1&pid=ImgDetMain&o=7&rm=3"
+          }
+          alt={dish.name}
+          className="w-full h-40 object-cover rounded-lg"
+        />
       </div>
 
-      <p className="text-sm text-gray-500 mt-1 mb-2">
-        {dish.category === "sushi"
-          ? "Fresco y auténtico sushi japonés."
-          : "Plato tradicional de la casa."}
-      </p>
+      {/* --- 3. Cuerpo de la Carta (Crece para ocupar el espacio) --- */}
+      <div className="flex-grow">
+        <h3 className="text-xl mt-2 font-bold text-gray-800 leading-tight">
+          {dish.name}
+        </h3>
+        <span className="mt-2 text-xs text-red-600 font-semibold ml-3 ml-3 px-2 py-1 bg-red-100 rounded-full uppercase tracking-wider">
+          {dish.category}
+        </span>
 
-      {isAdmin ? renderAdminMode() : renderClientMode()}
+        {/* Descripción */}
+        <p className="text-sm text-gray-600 mt-3 mb-2 line-clamp-2">
+          {/* Aquí podrías usar una descripción más corta o la lógica actual */}
+          {dish.description ||
+            (dish.category === "sushi"
+              ? "Fresco y auténtico sushi japonés."
+              : "Plato tradicional de la casa.")}
+        </p>
+      </div>
+
+      {renderClientMode()}
     </div>
   );
 };
