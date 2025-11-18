@@ -15,6 +15,11 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 
 class ProductoSerializer(serializers.ModelSerializer):
+    categoria = serializers.CharField(
+        source='categoria.nombre',
+        read_only=True
+    )
+    
     categoria_id = serializers.PrimaryKeyRelatedField(
         source='categoria',
         queryset=Categoria.objects.all(),

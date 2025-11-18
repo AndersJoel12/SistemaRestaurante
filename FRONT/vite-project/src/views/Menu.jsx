@@ -38,9 +38,13 @@ const Menu = () => {
       const fetchedProducts = dishResponse.data;
       setDishes(fetchedProducts);
 
+      console.log(fetchedCategory);
+      console.log(fetchedProducts)
+
       if (fetchedCategory.length > 0) {
         const firstCategorySlug = fetchedCategory[0].id;
         setActiveCategory(firstCategorySlug);
+        console.log(`Categoría activa establecida a: ${firstCategorySlug}`);
       } else {
         console.log("No se encontraron categorías.");
       }
@@ -116,6 +120,7 @@ const Menu = () => {
       <nav 
         className="flex justify-center space-x-2 bg-red-700 border-t border-red-900 text-white sticky top-0 z-20">
         {category.map((cat) => (
+          console.log(`Renderizando botón para categoría: ${cat.name} (ID: ${cat.id})`),
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
@@ -125,7 +130,7 @@ const Menu = () => {
                 : "hover:bg-red-600"
             }`}
           >
-            {cat.name}
+            {cat.nombre}
           </button>
         ))}
       </nav>

@@ -1,10 +1,38 @@
 import '../views/ViewStyles.css'
-import Logo from '../assets/logo.png'
+import Logo         from '../assets/logo.png'
 import { useState } from 'react'
-import SignUpModal from '../components/ModalFormSignUp'
+import SignUpModal  from '../components/ModalFormSignUp'
+
+
+import { useNavigate } from 'react-router-dom'
 
 function Home() {
     const [showModal, setShowModal] = useState(false)
+    const navigate = useNavigate()
+
+    const getRedirectPath = (role) => {
+        switch (role) {
+            case 'administrador':
+                return '/manage-users';
+            case 'cocinero':
+                return '/Kitchen';
+            case 'mesero':
+                return '/Tables';
+            default:
+                return '/Menu';
+        }
+    };
+
+    const handleLoginSuccess = (role) => {
+        setShowModal(false);
+
+        if (role) {
+            navigate(getRedirectPath(role));
+        } else {
+            console.error('Rol no conocido, redirigiendo a la página principal.');
+            navigate('/');
+        }
+    }
 
     return (
         <div className="flex items-center justify-center min-h-screen">
@@ -34,7 +62,11 @@ function Home() {
             </div>
         </div>
 
-        <SignUpModal isOpen={showModal} onClose={() => setShowModal(false)} />
+        <SignUpModal 
+            isOpen={showModal} 
+            onClose={() => setShowModal(false)} 
+            onLoginSuccess={handleLoginSuccess}    
+        />
         </div>
     )
 }

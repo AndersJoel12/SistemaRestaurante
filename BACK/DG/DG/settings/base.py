@@ -105,8 +105,8 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     
-    #'USER_ID_FIELD': 'id', 
-    #'USER_ID_CLAIM': 'user_id',
+    'USER_ID_FIELD': 'id', 
+    'USER_ID_CLAIM': 'user_id',
     
     #'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
 }
