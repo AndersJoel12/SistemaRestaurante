@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from "react";
-import { AuthProvider } from "./context/AuthContext.jsx"
-import { Routes, Route } from "react-router-dom"
+import { AuthProvider } from "./context/AuthContext.jsx";
+import { Routes, Route } from "react-router-dom";
 
 const Home = lazy(() => import("./views/Home"));
 const Menu = lazy(() => import("./views/Menu"));
@@ -9,6 +9,7 @@ const Kitchen = lazy(() => import("./views/Kitchen"));
 const Tables = lazy(() => import("./views/Tables"));
 const ManageUsers = lazy(() => import("./views/ManageUsers"));
 const ManageMenu = lazy(() => import("./views/ManageMenu.jsx"));
+const Unauthorized = lazy(() => import("./views/Unauthorized.jsx"));
 
 function App() {
   return (
@@ -21,15 +22,16 @@ function App() {
           </div>
         }
       >
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/tables" element={<Tables />} />
-        <Route path="/menu" element={<Menu />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/kitchen" element={<Kitchen />} />
-        <Route path="/manage-users" element={<ManageUsers />} />
-        <Route path="/manage-menu" element={<ManageMenu />} />
-      </Routes> 
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/tables" element={<Tables />} />
+          <Route path="/menu" element={<Menu />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/kitchen" element={<Kitchen />} />
+          <Route path="/manage-users" element={<ManageUsers />} />
+          <Route path="/manage-menu" element={<ManageMenu />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+        </Routes>
       </Suspense>
     </AuthProvider>
   );
