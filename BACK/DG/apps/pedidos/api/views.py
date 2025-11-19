@@ -15,7 +15,7 @@ class MesaViewSet(viewsets.ModelViewSet):
         elif self.action in ['list', 'retrieve', 'update', 'partial_update']:
             permission_classes = [permissions.AllowAny]
         else:
-            permission_classes = [permissions.AllowAny]
+            permission_classes = [permissions.AllowAny] 
         return [permission() for permission in permission_classes]
 
 class PedidoViewSet(viewsets.ModelViewSet):

@@ -20,7 +20,12 @@ class ProductoSerializer(serializers.ModelSerializer):
         read_only=True
     )
     
-    categoria_id = serializers.PrimaryKeyRelatedField(
+    categoria_id = serializers.IntegerField(
+        source='categoria.id',
+        read_only=True
+    )
+
+    categoria_escritura = serializers.PrimaryKeyRelatedField(
         source='categoria',
         queryset=Categoria.objects.all(),
         write_only=True
@@ -37,6 +42,7 @@ class ProductoSerializer(serializers.ModelSerializer):
             'disponible',
             'categoria',
             'categoria_id',
+            'categoria_escritura',
             )
         read_only_fields = ('id', 'created_at', 'updated_at', 'state')
 

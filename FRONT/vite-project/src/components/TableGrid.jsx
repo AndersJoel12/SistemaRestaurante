@@ -1,40 +1,65 @@
-// src/components/TablesGrid.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import TableCell from "./TableCell";
 import ArrowFluctuation from "./ArrowFluctuation";
 
+// Definimos el tamaño máximo de la cuadrícula para pantallas grandes (se mantiene como referencia, pero se usa más Tailwind)
 const GRID_SIZE = 4;
+// URL de la API
+const API_URL = "http://localhost:8000/api/mesas";
 
-const INITIAL_TABLES_DATA = [
-  { number: 1, capacity: 4, status: "libre" },
-  { number: 2, capacity: 8, status: "libre" },
-  { number: 3, capacity: 9, status: "libre" },
-  { number: 4, capacity: 6, status: "libre" },
-  { number: 5, capacity: 4, status: "ocupada" },
-  { number: 6, capacity: 8, status: "libre" },
-  { number: 7, capacity: 6, status: "deshabilitada" },
-  { number: 8, capacity: 4, status: "libre" },
-  { number: 9, capacity: 4, status: "libre" },
-  { number: 10, capacity: 8, status: "libre" },
-  { number: 11, capacity: 6, status: "ocupada" },
-  { number: 12, capacity: 4, status: "deshabilitada" },
-  { number: 13, capacity: 4, status: "libre" },
-  { number: 14, capacity: 6, status: "ocupada" },
-  { number: 15, capacity: 6, status: "libre" },
-  { number: 16, capacity: 4, status: "libre" },
-];
+// Función para transformar los datos de la API
+// API: { id: 1, numero: 1, capacidad: 4, ubicacion: "...", estado: true/false }
+// Componente: { number: 1, capacity: 4, status: "libre"/"ocupada"/"deshabilitada" }
+const transformData = (apiMesas) => {
+  return apiMesas.map((mesa) => ({
+    number: mesa.numero,
+    capacity: mesa.capacidad,
+    // TRUE en la API significa libre/disponible (asumimos por el contexto de 'apartar')
+    // Aunque 'estado: true' en el modelo de BD a menudo significa 'activo',
+    // para un sistema de mesas, 'estado: true' en la tabla 'mesas' a menudo significa 'disponible/libre'
+    // y un segundo campo (como 'ocupada_por_pedido_id') indica la ocupación.
+    // ASUMIMOS: estado: true = 'libre', estado: false = 'ocupada'.
+    // Si la lógica es al revés, solo invierte la condición.
+    // Además, la mesa 7 y 12 están 'deshabilitada' en tu mock, pero la API no tiene ese campo.
+    // Por simplicidad, solo usaremos 'libre' y 'ocupada'.
+    status: mesa.estado ? "libre" : "ocupada", 
+  }));
+};
 
 const TablesGrid = () => {
   const [selectedTable, setSelectedTable] = useState(null);
-  const [tables, setTables] = useState(INITIAL_TABLES_DATA);
+  // Inicializamos tables como un array vacío, se llenará con los datos de la API
+  const [tables, setTables] = useState([]); 
   const [numPersonas, setNumPersonas] = useState("");
   const [ocupacionMesas, setOcupacionMesas] = useState({});
+  const [loading, setLoading] = useState(true); // Nuevo estado para la carga
 
-  // 👇 Nueva: mesa ocupada actualmente seleccionada
   const [occupiedSelectedTable, setOccupiedSelectedTable] = useState(null);
 
-  const navigate = useNavigate();
+  // --- NUEVA LÓGICA DE CARGA DE DATOS ---
+  useEffect(() => {
+    const fetchMesas = async () => {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        // Transformar y establecer los datos
+        const transformedTables = transformData(data);
+        setTables(transformedTables);
+        setLoading(false); // La carga ha terminado
+      } catch (error) {
+        console.error("Error al obtener las mesas de la API:", error);
+        // Si hay error, puedes dejar las tablas vacías o usar un mock de fallback
+        setTables([]); 
+        setLoading(false); 
+      }
+    };
+
+    fetchMesas();
+  }, []);
+  // ----------------------------------------
 
   const currentSelectedTable =
     tables.find((t) => t.number === selectedTable) || null;
@@ -44,15 +69,12 @@ const TablesGrid = () => {
     setNumPersonas("");
 
     if (table.status === "ocupada") {
-      // Actualiza la mesa ocupada seleccionada SIEMPRE al hacer click
       setOccupiedSelectedTable(table);
     } else {
-      // Si la mesa no está ocupada, limpiamos la referencia
       setOccupiedSelectedTable(null);
     }
   };
 
-  // Mantener sessionStorage sincronizado con la mesa ocupada seleccionada
   useEffect(() => {
     if (occupiedSelectedTable) {
       sessionStorage.setItem(
@@ -60,15 +82,18 @@ const TablesGrid = () => {
         JSON.stringify(occupiedSelectedTable)
       );
     } else {
-      // Opcional: si no quieres que quede la anterior al seleccionar una libre,
-      // limpia el storage:
       sessionStorage.removeItem("mesa_activa");
     }
   }, [occupiedSelectedTable]);
 
+  // Esta función `handleApartar` **debería** llamar a un endpoint de la API
+  // para cambiar el estado de la mesa a 'ocupada'.
+  // Por ahora, solo mantendremos la lógica local tal como estaba en tu código original,
+  // pero la **recomendación** es agregar aquí una llamada `fetch` (POST/PUT) a la API.
   const handleApartar = () => {
     if (!currentSelectedTable || !numPersonas) return;
 
+    // Lógica local para simular la ocupación (debería ir la llamada a la API)
     setOcupacionMesas({
       ...ocupacionMesas,
       [currentSelectedTable.number]: numPersonas,
@@ -79,27 +104,31 @@ const TablesGrid = () => {
     );
     setTables(updatedTables);
 
-    // Al apartar, esta mesa pasa a ser la ocupada seleccionada
     const nuevaMesa = { ...currentSelectedTable, status: "ocupada" };
     setOccupiedSelectedTable(nuevaMesa);
 
     alert(
-      `Mesa ${currentSelectedTable.number} apartada para ${numPersonas} personas`
+      `Mesa ${currentSelectedTable.number} apartada para ${numPersonas} personas (LOCALMENTE).`
     );
   };
 
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 bg-gray-100 min-h-screen flex items-center justify-center">
+        <div className="text-xl font-bold text-red-800">Cargando Mesas...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 bg-gray-100 min-h-screen flex flex-col items-center justify-center relative">
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl">
-        <h1 className="text-3xl font-extrabold mb-4 text-red-800 text-center">
-          CROQUIS DE MESAS (GRID)
+    <div className="p-4 sm:p-6 bg-gray-100 min-h-screen flex flex-col items-center justify-center">
+      <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm md:max-w-xl lg:max-w-2xl">
+        <h1 className="text-2xl sm:text-3xl font-extrabold mb-4 text-red-800 text-center">
+          MESAS
         </h1>
 
         <div
-          className="grid gap-4 mx-auto"
-          style={{
-            gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(80px, 1fr))`,
-          }}
+          className="grid gap-4 mx-auto grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-4"
         >
           {tables.map((table) => (
             <TableCell
@@ -131,7 +160,7 @@ const TablesGrid = () => {
                     );
                   }
                 }}
-                className="border rounded-lg p-2 w-24 text-center"
+                className="border rounded-lg p-2 w-20 text-center"
                 min="1"
                 max={currentSelectedTable.capacity}
               />
@@ -147,7 +176,6 @@ const TablesGrid = () => {
         )}
       </div>
 
-      {/* Usamos ArrowFluctuation con la mesa ocupada seleccionada, no con la anterior */}
       {occupiedSelectedTable && (
         <ArrowFluctuation mesa={occupiedSelectedTable.number} />
       )}
