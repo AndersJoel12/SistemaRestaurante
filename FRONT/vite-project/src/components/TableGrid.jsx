@@ -1,7 +1,8 @@
 // src/components/TablesGrid.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import TableCell from "./TableCell";
-import ArrowFluctuation from "./ArrowFluctuation"; // 👈 nuevo import
+import ArrowFluctuation from "./ArrowFluctuation";
 
 const GRID_SIZE = 4;
 
@@ -30,13 +31,40 @@ const TablesGrid = () => {
   const [numPersonas, setNumPersonas] = useState("");
   const [ocupacionMesas, setOcupacionMesas] = useState({});
 
+  // 👇 Nueva: mesa ocupada actualmente seleccionada
+  const [occupiedSelectedTable, setOccupiedSelectedTable] = useState(null);
+
+  const navigate = useNavigate();
+
   const currentSelectedTable =
     tables.find((t) => t.number === selectedTable) || null;
 
   const handleSelect = (table) => {
     setSelectedTable(table.number);
     setNumPersonas("");
+
+    if (table.status === "ocupada") {
+      // Actualiza la mesa ocupada seleccionada SIEMPRE al hacer click
+      setOccupiedSelectedTable(table);
+    } else {
+      // Si la mesa no está ocupada, limpiamos la referencia
+      setOccupiedSelectedTable(null);
+    }
   };
+
+  // Mantener sessionStorage sincronizado con la mesa ocupada seleccionada
+  useEffect(() => {
+    if (occupiedSelectedTable) {
+      sessionStorage.setItem(
+        "mesa_activa",
+        JSON.stringify(occupiedSelectedTable)
+      );
+    } else {
+      // Opcional: si no quieres que quede la anterior al seleccionar una libre,
+      // limpia el storage:
+      sessionStorage.removeItem("mesa_activa");
+    }
+  }, [occupiedSelectedTable]);
 
   const handleApartar = () => {
     if (!currentSelectedTable || !numPersonas) return;
@@ -50,6 +78,10 @@ const TablesGrid = () => {
       t.number === currentSelectedTable.number ? { ...t, status: "ocupada" } : t
     );
     setTables(updatedTables);
+
+    // Al apartar, esta mesa pasa a ser la ocupada seleccionada
+    const nuevaMesa = { ...currentSelectedTable, status: "ocupada" };
+    setOccupiedSelectedTable(nuevaMesa);
 
     alert(
       `Mesa ${currentSelectedTable.number} apartada para ${numPersonas} personas`
@@ -115,9 +147,9 @@ const TablesGrid = () => {
         )}
       </div>
 
-      {/* 👇 Aquí usamos ArrowFluctuation solo si la mesa está ocupada */}
-      {currentSelectedTable?.status === "ocupada" && (
-        <ArrowFluctuation mesa={currentSelectedTable.number} />
+      {/* Usamos ArrowFluctuation con la mesa ocupada seleccionada, no con la anterior */}
+      {occupiedSelectedTable && (
+        <ArrowFluctuation mesa={occupiedSelectedTable.number} />
       )}
     </div>
   );
