@@ -1,21 +1,17 @@
 import React, { useState } from "react";
-import axios from 'axios';
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import { jwtDecode } from 'jwt-decode';
-// Se eliminó la importación problemática: import './Components.css';
+import { jwtDecode } from "jwt-decode";
 
-const LOGIN_URL = 'http://localhost:8000/token/';
+const LOGIN_URL = "http://localhost:8000/token/";
 
 function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
   const { loginUser } = useAuth();
-
-  // Estado para Correo y Contraseña
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
-  const [loanding, setLoanding] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
@@ -24,85 +20,75 @@ function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
     setErrors({});
     setApiError("");
 
-    // Validaciones
     const newErrors = {};
     if (!email.trim() || !email.includes("@")) {
       newErrors.email = "Debe ingresar un correo electrónico válido.";
     }
-
     if (!password.trim()) {
       newErrors.password = "La contraseña es obligatoria.";
     } else if (password.length < 6) {
       newErrors.password = "La contraseña debe tener al menos 6 caracteres.";
     }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    setLoanding(true);  
+    setLoading(true);
 
-  try {
-    const response = await axios.post(LOGIN_URL, {
-      email: email,
-      password: password
-    });
-    
-    const data = response.data;
+    try {
+      const response = await axios.post(LOGIN_URL, { email, password });
+      const data = response.data;
+      const accessToken = data.access;
 
-    const accessToken = data.access;
+      if (accessToken) {
+        const decodedToken = jwtDecode(accessToken);
+        const role = decodedToken.rol;
 
-    if (accessToken) {
-      const decodedToken = jwtDecode(accessToken);
-      console.log(decodedToken);
-      const role = decodedToken.rol;
+        const usuarioSesion = {
+          email: email, // 👈 usamos el input directamente
+          rol: role,
+          token: accessToken,
+        };
+        sessionStorage.setItem("usuario_sesion", JSON.stringify(usuarioSesion));
 
-      loginUser(data); // Actualiza el contexto de autenticación
+        loginUser(data);
+        if (onLoginSuccess) onLoginSuccess(role);
 
-      if (onLoginSuccess) {
-        onLoginSuccess(role); // Notifica al componente padre sobre el inicio de sesión exitoso
+        setEmail("");
+        setPassword("");
+        setErrors({});
+        onClose();
+      } else {
+        setApiError("Respuesta inválida del servidor.");
       }
-
-      setEmail('');
-      setPassword('');
-      setErrors('');
-      setErrors({});
-      onClose();
-
-    } else {
-      setApiError("Respuesta inválida del servidor.");
-    }   
-  } catch (error) {
-    if (error.response && error.response.status === 401) {
-      setApiError("Correo electrónico o contraseña incorrectos.");
-    } else if (error.request) {
-      setApiError("Error del servidor. Por favor, inténtelo de nuevo más tarde.");
-    } else {
-      setApiError('Error inesperado: ' + error.message);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        setApiError("Correo electrónico o contraseña incorrectos.");
+      } else if (error.request) {
+        setApiError("Error del servidor. Inténtalo más tarde.");
+      } else {
+        setApiError("Error inesperado: " + error.message);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoanding(false);
-  }
-}
-
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300 opacity-100"
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={onClose}
       ></div>
-
-      <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10 transform transition-all duration-300 opacity-100 scale-100">
+      <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10">
         <h2 className="text-xl font-bold text-red-600 mb-4">Iniciar Sesión</h2>
         {apiError && (
-                <div className="text-red-600 text-sm mb-4 p-2 bg-red-100 border border-red-300 rounded">
-                    {apiError}
-                </div>
+          <div className="text-red-600 text-sm mb-4 p-2 bg-red-100 border border-red-300 rounded">
+            {apiError}
+          </div>
         )}
         <form className="space-y-4 text-left" onSubmit={handleSubmit}>
-          {/* --- CAMPO DE CORREO ELECTRÓNICO --- */}
           <div>
             <label
               htmlFor="modal-email"
@@ -113,7 +99,6 @@ function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
             <input
               type="email"
               id="modal-email"
-              placeholder="Ej: Alverojesus5@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
@@ -121,13 +106,13 @@ function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
                   ? "border-red-500 ring-red-500"
                   : "focus:ring-red-500"
               }`}
+              placeholder="Ej: usuario@gmail.com"
             />
             {errors.email && (
               <p className="text-red-500 text-sm mt-1">{errors.email}</p>
             )}
           </div>
 
-          {/* --- CAMPO DE CONTRASEÑA --- */}
           <div>
             <label
               htmlFor="modal-password"
@@ -138,7 +123,6 @@ function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
             <input
               type="password"
               id="modal-password"
-              placeholder="Contraseña Secreta"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
@@ -146,6 +130,7 @@ function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
                   ? "border-red-500 ring-red-500"
                   : "focus:ring-red-500"
               }`}
+              placeholder="Contraseña Secreta"
             />
             {errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password}</p>
@@ -154,10 +139,10 @@ function SignUpModal({ isOpen, onClose, onLoginSuccess }) {
 
           <button
             type="submit"
-            disabled={loanding}
-            className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition cursor-pointer"
+            disabled={loading}
+            className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
           >
-            Acceder
+            {loading ? "Accediendo..." : "Acceder"}
           </button>
         </form>
 

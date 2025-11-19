@@ -1,6 +1,8 @@
+// src/App.jsx
 import React, { Suspense, lazy } from "react";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { Routes, Route } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute.jsx"; // ✅ Importamos el protector
 
 const Home = lazy(() => import("./views/Home"));
 const Menu = lazy(() => import("./views/Menu"));
@@ -23,14 +25,72 @@ function App() {
         }
       >
         <Routes>
+          {/* Público */}
           <Route path="/" element={<Home />} />
-          <Route path="/tables" element={<Tables />} />
-          <Route path="/menu" element={<Menu />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/kitchen" element={<Kitchen />} />
-          <Route path="/manage-users" element={<ManageUsers />} />
-          <Route path="/manage-menu" element={<ManageMenu />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
+
+          {/* Mesero */}
+          <Route
+            path="/tables"
+            element={
+              <ProtectedRoute
+                roles={["mesero", "mesonero", "administrador", "admin"]}
+              >
+                <Tables />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/menu"
+            element={
+              <ProtectedRoute
+                roles={["mesero", "mesonero", "administrador", "admin"]}
+              >
+                <Menu />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute
+                roles={["mesero", "mesonero", "administrador", "admin"]}
+              >
+                <Orders />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Cocinero */}
+          <Route
+            path="/kitchen"
+            element={
+              <ProtectedRoute roles={["cocinero", "administrador", "admin"]}>
+                <Kitchen />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Administración */}
+          <Route
+            path="/manage-users"
+            element={
+              <ProtectedRoute roles={["administrador", "admin"]}>
+                <ManageUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-menu"
+            element={
+              <ProtectedRoute roles={["administrador", "admin"]}>
+                <ManageMenu />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Default */}
+          <Route path="*" element={<Home />} />
         </Routes>
       </Suspense>
     </AuthProvider>
