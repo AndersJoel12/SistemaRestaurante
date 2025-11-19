@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import MenuItem from "../components/MenuItem.jsx";
 import PreviewOrder from "../components/PreviewOrder.jsx";
 import axios from "axios";
@@ -11,18 +11,20 @@ const URL_DISHES = "http://localhost:8000/api/productos";
 //Funcion Menu
 const Menu = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  const [dishes, setDishes] = useState([]);
-  const [category, setCategory] = useState([]);	
+
+  const [dishes, setDishes] = useState([]); // Almacena todos los platos de la API
+  const [category, setCategory] = useState([]); // Almacena todas las categorías de la API
 
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
 
-  const [activeOrder, setActiveOrder] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("entradas");
+  const [activeOrder, setActiveOrder] = useState([]); // La orden actual del cliente
+  // Inicializa con "all" para mostrar todos los platos al cargar
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchMenuData = useCallback(async () => {
+    console.log("FETCH: Iniciando la carga de datos del menú...");
     setLoading(true);
     setApiError(null);
 
@@ -33,126 +35,198 @@ const Menu = () => {
       ]);
 
       const fetchedCategory = catResponse.data;
-      setCategory(fetchedCategory);
-
       const fetchedProducts = dishResponse.data;
+
+      setCategory([
+        { id: "all", nombre: "Todas las categorías" },
+        ...fetchedCategory,
+      ]);
       setDishes(fetchedProducts);
 
-      console.log(fetchedCategory);
-      console.log(fetchedProducts)
+      console.log("FETCH: Categorías obtenidas:", fetchedCategory);
+      console.log("FETCH: Platos obtenidos:", fetchedProducts.length);
 
-      if (fetchedCategory.length > 0) {
-        const firstCategorySlug = fetchedCategory[0].id;
-        setActiveCategory(firstCategorySlug);
-        console.log(`Categoría activa establecida a: ${firstCategorySlug}`);
+      if (fetchedCategory.length > 0 && activeCategory === "all") {
+        setActiveCategory(fetchedCategory[0].id);
+        console.log(
+          `FETCH: Categoría inicial activa establecida a ID: ${fetchedCategory[0].id}`
+        );
       } else {
-        console.log("No se encontraron categorías.");
+        console.log("FETCH: No se establecen categorías iniciales.");
       }
     } catch (error) {
-      console.error("Error al obtener los datos del menú:", error);
-      
-      let errorMessage = "Ocurrió un error al obtener los datos del menú";
-      if (error.response) {
-        errorMessage = `Error ${error.response.status}: Problema de permisos o formato de datos.`;
-        console.error("   Error de Respuesta (Status y Data):", error.response.status, error.response.data);
-      } else if (error.request) {
-        errorMessage = "Error de red: No se pudo alcanzar el servidor (verifique que esté corriendo en 8000).";
+      console.error(
+        "FETCH_ERROR: Error al obtener los datos del menú:",
+        error.message,
+        error.response?.status
+      );
+
+      let errorMessage =
+        "Ocurrió un error al obtener los datos del menú. Revise la consola para detalles.";
+      if (error.request && !error.response) {
+        errorMessage =
+          "Error de red: No se pudo alcanzar el servidor (verifique que esté corriendo en 8000).";
+      } else if (error.response) {
+        errorMessage = `Error ${error.response.status}: Problema de servidor o permisos.`;
       }
       setApiError(errorMessage);
       setCategory([]);
       setDishes([]);
     } finally {
       setLoading(false);
+      console.log("FETCH: Proceso de carga de datos del menú finalizado.");
     }
-
-  }, []);
+  }, [activeCategory]);
 
   useEffect(() => {
     fetchMenuData();
   }, [fetchMenuData]);
 
+  const filteredDishes = dishes.filter((d) => {
+    const activeCatObj = category.find((cat) => cat.id === activeCategory);
+    const activeCatName = activeCatObj ? activeCatObj.nombre : null;
 
-  const filteredDishes = dishes.filter((d) => d.category === activeCategory);
-  console.log(`Filtro: Mostrando ${filteredDishes.length} platos para la categoría: ${activeCategory}`);
+    const categoryMatch =
+      activeCategory === "all" ||
+      (activeCatName && d.categoria === activeCatName);
+
+    const dishName = d.nombre || "";
+    const searchMatch = dishName
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    return categoryMatch && searchMatch;
+  });
+
+  console.log(
+    `FILTRO: Mostrando ${filteredDishes.length} platos para la categoría: ${activeCategory}`
+  );
 
   const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
 
-  const goReview = () => {
-    if (totalItems === 0) {
-      console.error("La orden está vacía. Añade al menos un plato.");
-      return;
-    } // Navega a Orders, pasando la orden y el menú actual (caché)
-    console.log("Iniciando redirección a /orders con total items:", totalItems);
-    navigate("/orders", { state: { activeOrder, dishes } });
-  };
-
   const updateOrder = (dish, action, newQuantity) => {
-    console.log(`updateOrder llamado con dish: ${dish.name}, action: ${action}, newQuantity: ${newQuantity}`);
+    console.log(
+      `UPDATE_ORDER: Llamado con plato: ${dish.nombre}, acción: ${action}, Cantidad: ${newQuantity}`
+    );
     setActiveOrder((prevOrder) => {
-      const existingItemIndex = prevOrder.findIndex((item) => item.id === dish.id);
-      setActiveOrder((prevOrder) => {return prevOrder;}); // Debug interno
+      const existingItemIndex = prevOrder.findIndex(
+        (item) => item.id === dish.id
+      );
       let updatedOrder = [...prevOrder];
 
       if (existingItemIndex >= 0) {
+        // El plato ya existe en la orden
         if (action === "update") {
           if (newQuantity <= 0) {
-            updatedOrder.splice(existingItemIndex, 1);
+            updatedOrder.splice(existingItemIndex, 1); // Eliminar
+            console.log(`UPDATE_ORDER: Eliminado plato ${dish.nombre}.`);
           } else {
-            updatedOrder[existingItemIndex].quantity = newQuantity;
+            updatedOrder[existingItemIndex].quantity = newQuantity; // Actualizar
+            console.log(
+              `UPDATE_ORDER: Cantidad de ${dish.nombre} actualizada a ${newQuantity}.`
+            );
           }
         } else if (action === "remove") {
-          updatedOrder.splice(existingItemIndex, 1);
+          updatedOrder.splice(existingItemIndex, 1); // Eliminar explícitamente
+          console.log(
+            `UPDATE_ORDER: Eliminado plato ${dish.nombre} (Acción remove).`
+          );
         }
       } else if (action === "add" && newQuantity > 0) {
+        // El plato es nuevo en la orden
         updatedOrder.push({ ...dish, quantity: newQuantity });
+        console.log(
+          `UPDATE_ORDER: Añadido plato ${dish.nombre} con cantidad ${newQuantity}.`
+        );
       }
 
-      console.log("Orden actualizada:", updatedOrder);
       return updatedOrder;
     });
-  }
+  };
+
+  const goReview = () => {
+    if (totalItems === 0) {
+      console.error("NAVIGATION: La orden está vacía. Abortando redirección.");
+      return;
+    }
+    console.log(
+      "NAVIGATION: Redireccionando a /orders con total items:",
+      totalItems
+    );
+    navigate("/orders", { state: { activeOrder, dishes } });
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
-      <div className="sticky top-0 bg-red-100 text-white z-20">
-        {/* Categorías (Navbar) */}
-      </div>
-      <nav 
-        className="flex justify-center space-x-2 bg-red-700 border-t border-red-900 text-white sticky top-0 z-20">
-        {category.map((cat) => (
-          console.log(`Renderizando botón para categoría: ${cat.name} (ID: ${cat.id})`),
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-4 py-2 text-sm font-bold transition-colors ${
-              activeCategory === cat.id
-                ? "bg-yellow-400 text-red-900"
-                : "hover:bg-red-600"
-            }`}
-          >
-            {cat.nombre}
-          </button>
-        ))}
+      {/* Barra de Navegación y Filtros */}
+      <nav className="sticky top-0 bg-red-700 p-4 shadow-lg z-20">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 sm:space-x-4">
+          {/* Barra de Búsqueda */}
+          <div className="flex-1 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Buscar plato por nombre..."
+              value={searchTerm}
+              onChange={(e) => {
+                console.log("BUSQUEDA: Nuevo término:", e.target.value);
+                setSearchTerm(e.target.value);
+              }}
+              className="w-full p-2 border border-red-500 rounded-lg focus:ring-yellow-400 focus:border-yellow-400 transition duration-150 text-gray-800"
+            />
+          </div>
+
+          {/* Selector de Categoría (Filtro) */}
+          <div className="w-full sm:w-48">
+            <select
+              // Aseguramos que el valor del select sea string para evitar warnings
+              value={String(activeCategory)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Convertimos a número si no es "all"
+                const newCategory = value === "all" ? value : Number(value);
+                console.log("FILTRO: Cambiando categoría a:", newCategory);
+                setActiveCategory(newCategory);
+                setSearchTerm("");
+              }}
+              className="w-full p-2 border border-red-500 rounded-lg bg-white text-gray-800 appearance-none cursor-pointer"
+            >
+              {category.map((cat) => (
+                // Usamos cat.id como key y value
+                <option key={cat.id} value={cat.id}>
+                  {cat.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </nav>
-      {/* Platos (Main Content) */}
-      {/* pb-24: Espacio al final para que el contenido no quede detrás del PreviewOrder fijo */}{" "}
+      {/* Contenido Principal: Platos */}
       <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
-        {filteredDishes.length > 0 ? (
+        {loading ? (
+          <p className="col-span-full text-center text-red-700 font-semibold">
+            ⏳ Cargando menú...
+          </p>
+        ) : apiError ? (
+          <p className="col-span-full text-center text-red-500 font-bold">
+            🚨 Error de API: {apiError}
+          </p>
+        ) : filteredDishes.length > 0 ? (
           filteredDishes.map((dish) => (
             <MenuItem
               key={dish.id}
               dish={dish}
               activeOrder={activeOrder}
-              setActiveOrder={setActiveOrder}
+              updateOrder={updateOrder} // 🔑 Pasamos la función centralizada
             />
           ))
         ) : (
-          <p className="col-span-full text-gray-500">
-            No hay platos en esta categoría.{" "}
+          <p className="col-span-full text-gray-500 text-center">
+            🍽️ No se encontraron platos que coincidan con los criterios de
+            categoría y búsqueda.
           </p>
         )}
       </main>
-      {/* PreviewOrder (Flotando en la parte inferior de la pantalla) */}{" "}
+      {/* PreviewOrder (Flotante en la parte inferior) */}
       {totalItems > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-transparent pointer-events-none">
           <div className="max-w-4xl mx-auto pointer-events-auto">

@@ -13,11 +13,11 @@ class EmpleadoViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
 
         if self.action in ['list', 'create', 'destroy']:
-            permission_classes = [IsAdministrador]
+            permission_classes = [permissions.AllowAny]
         elif self.action in ['retrieve', 'update', 'partial_update']:
-            permission_classes = [IsAdministrador | IsOwner]
+            permission_classes = [permissions.AllowAny]
         else:
-            permission_classes = [permissions.IsAuthenticated]
+            permission_classes = [permissions.AllowAny]
         return [permission() for permission in permission_classes]
 
     def destroy(self, request, *args, **kwargs):
