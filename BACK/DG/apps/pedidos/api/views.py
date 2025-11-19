@@ -11,11 +11,11 @@ class MesaViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'destroy']:
-            permission_classes = [IsAdministrador]
+            permission_classes = [permissions.AllowAny]
         elif self.action in ['list', 'retrieve', 'update', 'partial_update']:
-            permission_classes = [IsAdministrador | IsMesero]
+            permission_classes = [permissions.AllowAny]
         else:
-            permission_classes = [permissions.IsAuthenticated] 
+            permission_classes = [permissions.AllowAny]
         return [permission() for permission in permission_classes]
 
 class PedidoViewSet(viewsets.ModelViewSet):
@@ -25,11 +25,11 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create']:
-            permission_classes = [IsAdministrador | IsMesero]
+            permission_classes = [permissions.AllowAny]
         elif self.action in ['list', 'update', 'partial_update', 'destroy']:
-            permission_classes = [IsAdministrador]
+            permission_classes = [permissions.AllowAny]
         elif self.action in ['retrieve']:
-            permission_classes = [IsAdministrador | IsOwner]
+            permission_classes = [permissions.AllowAny]
         else:
             permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -53,11 +53,11 @@ class ProductoPedidoViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'create':
-            permissions_classes = [IsAdministrador | IsMesero]
+            permissions_classes = [permissions.AllowAny]
         elif self.action in ['list', 'retrieve']:
-            permissions_classes = [IsAdministrador | IsMesero | IsCocina]
+            permissions_classes = [permissions.AllowAny]
         elif self.action in ['update', 'partial_update', 'destroy']:
-            permissions_classes = [IsAdministrador | IsCocina]
+            permissions_classes = [permissions.AllowAny]
         else:
             permissions_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permissions_classes]

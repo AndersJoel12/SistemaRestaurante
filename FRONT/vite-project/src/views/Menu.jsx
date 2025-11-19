@@ -162,7 +162,7 @@ const Menu = () => {
       <nav className="sticky top-0 bg-red-700 p-4 shadow-lg z-20">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 sm:space-x-4">
           {/* Barra de Búsqueda */}
-          <div className="flex-1 w-full sm:w-auto">
+          <div className="flex-1 w-full sm:w-auto bg-white rounded-lg shadow-md">
             <input
               type="text"
               placeholder="Buscar plato por nombre..."

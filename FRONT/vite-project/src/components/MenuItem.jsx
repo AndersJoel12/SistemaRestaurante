@@ -42,20 +42,22 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
   // -------------------------------------------------------------------------------------------------------
   // Estilos y Renderizado
   // ---------------------------------------------------------------------------------------------------
+  // Añado 'sm:p-6' para más padding en pantallas grandes, 'md:text-left' para el texto, etc.
   const cardClasses = `
   flex flex-col max-h-100 
   justify-between bg-white 
-  p-4 rounded-xl shadow-lg 
+  p-3 sm:p-4 rounded-xl shadow-lg 
   transform transition duration-300 
   ${
     dish.disponible
       ? "hover:shadow-2xl hover:-translate-y-1"
       : "opacity-50 cursor-not-allowed grayscale" // Estilo para platos agotados
   }
- `;
+  `;
 
+  // Hago los botones ligeramente más pequeños en móviles 'w-7 h-7' y normales en pantallas grandes 'sm:w-8 sm:h-8'
   const buttonClass =
-    "w-8 h-8 rounded-full text-white font-bold transition-transform transform hover:scale-110 shadow-md";
+    "w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white font-bold transition-transform transform hover:scale-110 shadow-md flex items-center justify-center text-lg";
 
   const getAvailabilityStatus = () => (
     <span
@@ -70,16 +72,18 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
   );
 
   const renderClientMode = () => (
-    <div className="flex items-center justify-between mt-3 p-2">
-      <span className="flex text-xl font-extrabold text-black">
-        <span className="text-red-700">$</span>
+    // Reduzco el margen superior 'mt-2' en móviles, y el tamaño del precio 'text-lg'
+    <div className="flex items-center justify-between mt-2 sm:mt-3 p-1 sm:p-2">
+      <span className="flex text-lg sm:text-xl font-extrabold text-black">
+        <span className="text-red-700 mr-0.5 sm:mr-0">$</span>
         {/* Asegura que el precio sea un número flotante y se muestre con dos decimales */}
         {parseFloat(dish.precio || 0).toFixed(2)}
         <span className="text-red-700 ml-1">Ref</span>
       </span>
 
       {dish.disponible ? (
-        <div className="flex items-center space-x-2">
+        // Reduzco el espaciado 'space-x-1' en móviles
+        <div className="flex items-center space-x-1 sm:space-x-2">
           {/* Botón para restar cantidad (solo visible si quantity > 0) */}
           {quantity > 0 && (
             <button
@@ -92,7 +96,7 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
           )}
           {/* Muestra la cantidad actual (solo visible si quantity > 0) */}
           {quantity > 0 && (
-            <span className="text-lg font-bold w-6 text-center text-gray-800">
+            <span className="text-base sm:text-lg font-bold w-5 sm:w-6 text-center text-gray-800">
               {quantity}
             </span>
           )}
@@ -115,28 +119,30 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
   return (
     <div className={cardClasses}>
       {/* --- Imagen del Plato --- */}
-      <div className="mb-3">
+      <div className="mb-2 sm:mb-3">
         <img
-          // Usa dish.imagen de la API. Proporciona una imagen de fallback si no existe.
+          // Ajusto la altura de la imagen a 'h-36' en móviles y 'sm:h-40' en pantallas más grandes
           src={
             dish.imagen ||
             "https://placehold.co/300x160/ef4444/ffffff?text=Plato%20No%20Image"
           }
           alt={dish.nombre}
-          className="w-full h-40 object-cover rounded-lg"
+          className="w-full h-36 sm:h-40 object-cover rounded-lg"
         />
       </div>
       {/* --- Cuerpo de la Carta --- */}
       <div className="flex-grow">
-        <h3 className="text-xl mt-2 font-bold text-gray-800 leading-tight">
+        {/* Ajusto el tamaño del título 'text-lg' en móviles y 'sm:text-xl' en pantallas grandes */}
+        <h3 className="text-lg sm:text-xl mt-1 sm:mt-2 font-bold text-gray-800 leading-tight">
           {dish.nombre}
         </h3>
-        <span className="mt-2 text-xs text-red-600 font-semibold ml-3 ml-3 px-2 py-1 bg-red-100 rounded-full uppercase tracking-wider">
+        {/* Hago el badge de categoría ligeramente más pequeño y ajusto márgenes */}
+        <span className="mt-1 text-xs text-red-600 font-semibold px-2 py-0.5 bg-red-100 rounded-full uppercase tracking-wider inline-block">
           {dish.categoria}
         </span>
 
-        {/* Descripción */}
-        <p className="text-sm text-gray-600 mt-3 mb-2 line-clamp-2">
+        {/* Descripción (Ajusto el margen superior) */}
+        <p className="text-sm text-gray-600 mt-2 mb-1 line-clamp-2">
           {dish.descripcion}
         </p>
       </div>
