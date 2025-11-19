@@ -1,22 +1,17 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from 'axios';
 import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
+import NavBar from "../components/Navigation.jsx";
 
-// URL base de tu API
+// --- CONFIGURACIÓN ---
 const API_URL = 'http://localhost:8000/api/productos'; 
 
-// CATEGORÍAS (IDs numéricos obligatorios)
-const categories = [
+const CATEGORIES = [
   { id: 1, name: "Entradas" },
   { id: 2, name: "Sushi" },
   { id: 3, name: "Bebidas" },
   { id: 4, name: "Postre" },
-];
-
-const booleanOptions = [
-  { label: "SÍ (Disponible)", value: "true" },
-  { label: "NO (Agotado)", value: "false" },
 ];
 
 const GestionMenu = () => {
@@ -25,6 +20,7 @@ const GestionMenu = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [imagenArchivo, setImagenArchivo] = useState(null);
 
+  // Filtros
   const [busqueda, setBusqueda] = useState(""); 
   const [filtroCategoria, setFiltroCategoria] = useState(""); 
 
@@ -32,22 +28,46 @@ const GestionMenu = () => {
   useEffect(() => {
     const cargarPlatos = async () => {
       try {
-        const response = await axios.get(API_URL);
-        if (Array.isArray(response.data)) {
-          setPlatos(response.data);
-        } else {
-          setPlatos([]);
-        }
+        const response = await axios.get(`${API_URL}/`);
+        setPlatos(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
-        console.error("--- ERROR AL CARGAR ---", error);
-        setMessage({ type: "error", text: "No se pudo cargar el menú." });
+        console.error("Error load:", error);
+        setMessage({ type: "error", text: "No se pudo conectar con el servidor." });
       }
     };
     cargarPlatos();
   }, []);
 
-  // --- MANEJO DE INPUTS (CORREGIDO) ---
-  const handleFormChange = useCallback((arg1, arg2) => {
+  // --- 2. HELPER INDISPENSABLE ---
+  const getCategoryId = (item) => {
+    if (!item) return null;
+    const rawVal = item.categoria || item.categoria_id || item.category;
+    if (typeof rawVal === 'object' && rawVal !== null) return rawVal.id;
+    if (rawVal && !isNaN(rawVal)) return parseInt(rawVal, 10);
+    if (typeof rawVal === 'string') {
+        const catEncontrada = CATEGORIES.find(c => c.name.toLowerCase() === rawVal.toLowerCase());
+        return catEncontrada ? catEncontrada.id : null;
+    }
+    return null;
+  };
+
+  // --- 3. FILTRADO INTELIGENTE ---
+  const platosFiltrados = useMemo(() => {
+    return platos.filter((dish) => {
+      const texto = busqueda.toLowerCase();
+      const nombre = (dish.nombre || dish.name || "").toLowerCase();
+      const desc = (dish.descripcion || "").toLowerCase();
+      
+      const matchTexto = nombre.includes(texto) || desc.includes(texto);
+      const catId = getCategoryId(dish);
+      const matchCategoria = filtroCategoria === "" || String(catId) === String(filtroCategoria);
+
+      return matchTexto && matchCategoria;
+    });
+  }, [platos, busqueda, filtroCategoria]);
+
+  // --- 4. HANDLERS ---
+  const handleFormChange = (arg1, arg2) => {
     let name, value;
     if (arg1 && arg1.target) {
         name = arg1.target.name;
@@ -57,275 +77,307 @@ const GestionMenu = () => {
         value = arg2;
     }
     setEditingItem((prev) => ({ ...prev, [name]: value }));
-  }, []);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setImagenArchivo(file);
   };
 
-  // --- FILTRADO ---
-  const platosFiltrados = platos.filter((dish) => {
-    const textoBuscar = busqueda.toLowerCase();
-    const nombrePlato = (dish.nombre || dish.name || "").toLowerCase();
-    const descPlato = (dish.descripcion || "").toLowerCase();
-    const coincideTexto = nombrePlato.includes(textoBuscar) || descPlato.includes(textoBuscar);
-
-    let rawCat = dish.categoria_id || dish.categoria || dish.category;
-    let realCatID = rawCat;
-
-    if (typeof rawCat === 'object' && rawCat !== null) realCatID = rawCat.id;
-    else if (typeof rawCat === 'string' && isNaN(rawCat)) {
-        const catEncontrada = categories.find(c => c.name.toLowerCase() === rawCat.toLowerCase());
-        if (catEncontrada) realCatID = catEncontrada.id;
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setImagenArchivo(e.target.files[0]);
     }
+  };
 
-    const coincideCategoria = filtroCategoria === "" || String(realCatID) === String(filtroCategoria);
-    return coincideTexto && coincideCategoria;
-  });
-
-  // --- 2. GUARDADO (SOLUCIÓN "TIPO INCORRECTO") ---
-  const handleSave = async (data) => {
+  const openModal = (item = null) => {
     setMessage(null);
+    setImagenArchivo(null);
 
-    if (!data.name || data.name.trim() === "") {
-        setMessage({ type: "error", text: "El nombre es obligatorio." });
-        return;
+    if (item) {
+      const catId = getCategoryId(item);
+      const isAvail = item.available ?? item.disponible ?? item.is_available ?? true;
+      
+      setEditingItem({
+        id: item.id,
+        name: item.nombre || item.name || "", 
+        descripcion: item.descripcion || "",
+        price: item.precio || item.price || 0,
+        category: String(catId || CATEGORIES[0].id), 
+        available: isAvail ? "true" : "false",
+        imagen: item.imagen
+      });
+    } else {
+      setEditingItem({
+        id: null, name: "", descripcion: "", price: 0, imagen: null,
+        category: String(CATEGORIES[0].id), 
+        available: "true", 
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!editingItem.name.trim()) {
+      setMessage({ type: "error", text: "El nombre es obligatorio." });
+      return;
     }
 
     const formData = new FormData();
-    formData.append('nombre', data.name); 
-    formData.append('descripcion', data.descripcion);
-    formData.append('precio', parseFloat(data.price) || 0);
+    formData.append('nombre', editingItem.name); 
+    formData.append('descripcion', editingItem.descripcion);
+    formData.append('precio', editingItem.price); 
+    formData.append('categoria_id', parseInt(editingItem.category, 10)); 
     
-    // --- ¡AQUÍ ESTÁ EL FIX! ---
-    // Usamos parseInt() para asegurarnos de enviar un NÚMERO ENTERO (1) y no texto ("1")
-    // El 10 indica base decimal.
-    const catIdNumber = parseInt(data.category, 10);
-    formData.append('categoria_id', catIdNumber); 
+    const valPython = editingItem.available === "true" ? "True" : "False";
+    formData.append('available', valPython);
+    formData.append('disponible', valPython);
     
-    formData.append('available', data.available === "true" ? "True" : "False"); 
-
     if (imagenArchivo) {
       formData.append('imagen', imagenArchivo);
     }
 
-    // Debug para ver qué enviamos
-    console.log(`Enviando categoria_id: ${catIdNumber} (Tipo: ${typeof catIdNumber})`);
-
     try {
+      const headers = { 'Content-Type': 'multipart/form-data' };
       let response;
-      if (data.id) {
-        const url = `${API_URL}/${data.id}/`;
-        response = await axios.put(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-        setPlatos(prev => prev.map(item => item.id === response.data.id ? response.data : item));
+
+      if (editingItem.id) {
+        response = await axios.patch(`${API_URL}/${editingItem.id}/`, formData, { headers });
+        setPlatos(prev => prev.map(p => p.id === response.data.id ? response.data : p));
         setMessage({ type: "success", text: "Plato actualizado." });
       } else {
-        const url = `${API_URL}/`;
-        response = await axios.post(url, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        response = await axios.post(`${API_URL}/`, formData, { headers });
         setPlatos(prev => [...prev, response.data]);
         setMessage({ type: "success", text: "Plato creado." });
       }
+      setEditingItem(null); 
     } catch (error) {
       console.error("Error save:", error);
-      if (error.response) {
-        const errorData = error.response.data;
-        console.log("DATA ERROR:", errorData);
-        
-        if (error.response.status === 400) {
-            // Si devuelve { categoria_id: ['Error...'] }
-            const key = Object.keys(errorData)[0];
-            const msg = Array.isArray(errorData[key]) ? errorData[key][0] : errorData[key];
-            setMessage({ type: "error", text: `Error en ${key}: ${msg}` });
-        } else {
-            setMessage({ type: "error", text: `Error del servidor: ${error.response.status}` });
-        }
-      } else {
-        setMessage({ type: "error", text: "Error de conexión." });
-      }
+      const errorData = error.response?.data;
+      const errorMsg = errorData ? JSON.stringify(errorData) : "Error de conexión.";
+      setMessage({ type: "error", text: errorMsg });
     }
-    setEditingItem(null);
-    setImagenArchivo(null);
   };
 
-  // --- HANDLERS ---
-  const handleEdit = (item) => {
-    setMessage(null);
-    setImagenArchivo(null);
-    
-    let catID = item.categoria_id || item.categoria || item.category;
-    if (typeof catID === 'object' && catID !== null) catID = catID.id;
-    
-    // Si viene texto, intentamos buscar el ID
-    if (typeof catID === 'string' && isNaN(catID)) {
-        const found = categories.find(c => c.name.toLowerCase() === catID.toLowerCase());
-        if (found) catID = found.id;
-    }
-
-    let isAvail = true;
-    if (item.available !== undefined) isAvail = item.available;
-    else if (item.disponible !== undefined) isAvail = item.disponible;
-
-    setEditingItem({
-      id: item.id,
-      name: item.nombre || item.name || "", 
-      descripcion: item.descripcion || "",
-      price: item.precio || item.price || 0,
-      category: catID || categories[0].id,
-      available: isAvail ? "true" : "false",
-      imagen: item.imagen
-    });
-  };
-
-  const handleDelete = async (itemId) => {
-    if (!window.confirm(`¿Eliminar plato ID ${itemId}?`)) return;
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Estás seguro de eliminar este plato?")) return;
     try {
-      await axios.delete(`${API_URL}/${itemId}/`);
-      setPlatos(prev => prev.filter((item) => item.id !== itemId));
-      setMessage({ type: "warning", text: "Plato eliminado." });
-    } catch (error) {
-      setMessage({ type: "error", text: "No se pudo eliminar." });
+      await axios.delete(`${API_URL}/${id}/`);
+      setPlatos(prev => prev.filter(p => p.id !== id));
+      setMessage({ type: "warning", text: "Eliminado correctamente." });
+    } catch (e) { 
+      setMessage({ type: "error", text: "Error al eliminar." }); 
     }
   };
 
-  const handleCreateNew = () => {
-    setMessage(null);
-    setImagenArchivo(null); 
-    setEditingItem({
-      id: null, name: "", descripcion: "", imagen: null,
-      category: categories[0].id, price: 0, available: "true",
-    });
-  };
+  // --- RENDERIZADO RESPONSIVE ---
+  return (
+    <div className="bg-gray-100 min-h-screen font-sans pb-24"> {/* Padding bottom para el NavBar fijo */}
+      
+      {/* Wrapper Principal con padding adaptativo */}
+      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <MessageAlert msg={message} />
+        
+        {/* HEADER */}
+        <div className="bg-red-800 text-white p-4 md:p-6 rounded-xl shadow-xl mb-6">
+          <h1 className="text-2xl md:text-4xl font-extrabold text-center text-yellow-400 tracking-wide">
+            Gestión de Productos
+          </h1>
+        </div>
 
-  // --- RENDER FORM ---
-  const renderForm = () => {
-    if (!editingItem) return null;
-    const isNew = editingItem.id === null;
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4" onClick={() => setEditingItem(null)}>
-        <div className="bg-white rounded-xl shadow-2xl border-t-4 border-red-500 w-full max-w-lg overflow-y-auto max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-          <div className="p-6">
-            <h2 className="text-2xl font-bold mb-4 text-gray-700">{isNew ? "Crear Plato" : "Editar Plato"}</h2>
-            <div className="space-y-4">
-              <InputField label="Nombre" name="name" value={editingItem.name} onChange={handleFormChange} />
-              <InputField label="Descripción" name="descripcion" value={editingItem.descripcion} onChange={handleFormChange} />
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Imagen</label>
-                {!isNew && editingItem.imagen && !imagenArchivo && (
-                  <img src={editingItem.imagen} alt="Preview" className="w-20 h-20 rounded-md object-cover mb-2" />
-                )}
-                <input type="file" accept="image/*" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-red-50 file:text-red-700 hover:file:bg-red-100"/>
+        {/* CONTROLES (Stack en mobile, Row en Desktop) */}
+        <div className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-md sticky top-2 z-10">
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <input 
+              type="text" placeholder="🔍 Buscar plato..." 
+              value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 w-full sm:w-64 focus:ring-2 focus:ring-red-500 outline-none transition-all"
+            />
+            <select 
+              value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} 
+              className="border border-gray-300 rounded-lg px-4 py-3 w-full sm:w-auto bg-white focus:ring-2 focus:ring-red-500 outline-none cursor-pointer"
+            >
+              <option value="">📂 Todas</option>
+              {CATEGORIES.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+            </select>
+          </div>
+          <button 
+            onClick={() => openModal(null)} 
+            className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2"
+          >
+            <span>+</span> Crear Plato
+          </button>
+        </div>
+
+        {/* --- VISTA MÓVIL (CARDS) - Se oculta en MD --- */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
+          {platosFiltrados.length === 0 ? (
+             <div className="text-center p-8 bg-white rounded-xl text-gray-500 col-span-full">No se encontraron resultados.</div>
+          ) : (
+            platosFiltrados.map((dish) => {
+              const catId = getCategoryId(dish);
+              const catName = CATEGORIES.find(c => c.id == catId)?.name || "---";
+              const isAvailable = dish.available ?? dish.disponible ?? dish.is_available ?? true;
+
+              return (
+                <div key={dish.id} className="bg-white p-4 rounded-xl shadow-md flex flex-col gap-3 border border-gray-100">
+                  <div className="flex gap-4">
+                    <img src={dish.imagen || "https://placehold.co/80"} alt="img" className="w-20 h-20 rounded-lg object-cover bg-gray-100"/>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800 text-lg leading-tight">{dish.nombre || dish.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{dish.descripcion}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center text-sm border-t pt-2 mt-1">
+                    <span className="font-semibold text-gray-600">{catName}</span>
+                    <span className="font-extrabold text-xl text-red-700">${parseFloat(dish.precio || dish.price || 0).toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-1 gap-2">
+                    <span className={`py-1 px-2 rounded text-[10px] font-bold uppercase tracking-wide ${
+                      isAvailable ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    }`}>
+                      {isAvailable ? "Disponible" : "Agotado"}
+                    </span>
+                    <div className="flex gap-2">
+                      <button onClick={() => openModal(dish)} className="p-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
+                        ✏️
+                      </button>
+                      <button onClick={() => handleDelete(dish.id)} className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* --- VISTA DE ESCRITORIO (TABLE) - Se oculta en Móvil --- */}
+        <div className="hidden md:block overflow-hidden bg-white rounded-xl shadow-md border border-gray-100">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr className="text-gray-600 uppercase text-xs font-bold tracking-wider">
+                <th className="py-4 px-6 text-center">Imagen</th>
+                <th className="py-4 px-6 text-left">Nombre</th>
+                <th className="py-4 px-6 text-left">Categoría</th>
+                <th className="py-4 px-6 text-center">Precio</th>
+                <th className="py-4 px-6 text-center">Estado</th>
+                <th className="py-4 px-6 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-700 text-sm divide-y divide-gray-200">
+              {platosFiltrados.length === 0 ? (
+                <tr><td colSpan="6" className="text-center py-8 text-gray-500">No se encontraron resultados.</td></tr>
+              ) : (
+                platosFiltrados.map((dish) => {
+                  const catId = getCategoryId(dish);
+                  const catName = CATEGORIES.find(c => c.id == catId)?.name || "---";
+                  const isAvailable = dish.available ?? dish.disponible ?? dish.is_available ?? true;
+
+                  return (
+                    <tr key={dish.id} className="hover:bg-red-50 transition-colors group">
+                      <td className="py-3 px-6 text-center">
+                        <img src={dish.imagen || "https://placehold.co/40"} alt="img" className="w-12 h-12 rounded-lg object-cover mx-auto shadow-sm border"/>
+                      </td>
+                      <td className="py-3 px-6 text-left">
+                        <div className="font-bold text-gray-800 text-base">{dish.nombre || dish.name}</div>
+                        <div className="text-xs text-gray-500 max-w-xs truncate">{dish.descripcion}</div>
+                      </td>
+                      <td className="py-3 px-6 text-left">
+                        <span className="bg-gray-100 text-gray-600 py-1 px-3 rounded-full text-xs font-bold">
+                          {catName}
+                        </span>
+                      </td>
+                      <td className="py-3 px-6 text-center font-bold text-gray-700 text-base">
+                        ${parseFloat(dish.precio || dish.price || 0).toFixed(2)}
+                      </td>
+                      <td className="py-3 px-6 text-center">
+                          <span className={`py-1 px-3 rounded-full text-xs font-bold ${
+                            isAvailable 
+                            ? "bg-green-100 text-green-700 border border-green-200" 
+                            : "bg-red-100 text-red-700 border border-red-200"
+                          }`}>
+                            {isAvailable ? "DISPONIBLE" : "AGOTADO"}
+                          </span>
+                      </td>
+                      <td className="py-3 px-6 text-center space-x-4 opacity-80 group-hover:opacity-100">
+                        <button onClick={() => openModal(dish)} className="text-indigo-600 hover:text-indigo-800 font-semibold underline decoration-2 decoration-indigo-200 hover:decoration-indigo-600 transition-all">Editar</button>
+                        <button onClick={() => handleDelete(dish.id)} className="text-red-600 hover:text-red-800 font-semibold underline decoration-2 decoration-red-200 hover:decoration-red-600 transition-all">Eliminar</button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MODAL RESPONSIVE */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={() => setEditingItem(null)}>
+          {/* max-w-lg y w-full aseguran que se vea bien en movil y no crezca infinito en pc */}
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-100" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="bg-red-800 p-4 text-white flex justify-between items-center">
+              <h2 className="text-xl font-bold">{editingItem.id ? "Editar Plato" : "Crear Nuevo Plato"}</h2>
+              <button onClick={() => setEditingItem(null)} className="text-white hover:text-gray-300 text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[75vh]">
+              <div className="space-y-5">
+                <InputField label="Nombre del Plato" name="name" value={editingItem.name} onChange={handleFormChange} placeholder="Ej. Hamburguesa Doble" />
+                
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label>
+                    <textarea 
+                        name="descripcion" 
+                        value={editingItem.descripcion} 
+                        onChange={handleFormChange}
+                        rows="3"
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                        placeholder="Ingredientes y detalles..."
+                    ></textarea>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label>
+                        <select name="category" value={editingItem.category} onChange={handleFormChange} className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                            {CATEGORIES.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <InputField label="Precio ($)" name="price" type="number" value={editingItem.price} onChange={handleFormChange} />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Imagen</label>
+                    <div className="flex items-center gap-4 p-3 border rounded-lg bg-gray-50">
+                        {editingItem.imagen && !imagenArchivo && (
+                            <img src={editingItem.imagen} alt="Preview" className="w-16 h-16 rounded object-cover border" />
+                        )}
+                        <input type="file" accept="image/*" onChange={handleFileChange} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-100 file:text-red-700 hover:file:bg-red-200 cursor-pointer"/>
+                    </div>
+                </div>
+                
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Disponibilidad</label>
+                    <select name="available" value={editingItem.available} onChange={handleFormChange} className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
+                        <option value="true">✅ Disponible para ordenar</option>
+                        <option value="false">⛔ Agotado temporalmente</option>
+                    </select>
+                </div>
               </div>
-              <InputField label="Precio" name="price" type="number" value={editingItem.price} onChange={handleFormChange} />
-              
-              <InputField 
-                label="Categoría" 
-                name="category" 
-                type="select" 
-                options={categories.map((c) => ({ label: c.name, value: c.id }))} 
-                value={editingItem.category} 
-                onChange={handleFormChange} 
-              />
-              
-              <InputField label="Disponibilidad" name="available" type="select" options={booleanOptions} value={editingItem.available} onChange={handleFormChange} />
-              <div className="flex justify-end space-x-3 pt-4 border-t mt-4">
-                <button type="button" onClick={() => setEditingItem(null)} className="px-6 py-2 border rounded-lg hover:bg-gray-100">Cancelar</button>
-                <button type="button" onClick={() => handleSave(editingItem)} className="px-6 py-2 bg-red-700 text-white rounded-lg hover:bg-red-600 font-semibold">Guardar</button>
-              </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 flex justify-end gap-3 border-t">
+              <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2.5 rounded-lg text-gray-700 font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
+              <button type="button" onClick={handleSave} className="px-5 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 font-bold shadow-md transition-transform active:scale-95">Guardar Cambios</button>
             </div>
           </div>
         </div>
-      </div>
-    );
-  };
+      )}
 
-  // --- RENDER TABLE ---
-  const renderTableContent = () => {
-    const getCategoryName = (catValue) => {
-      if (!catValue) return "---";
-      const catFound = categories.find((c) => c.id == catValue);
-      return catFound ? catFound.name : catValue;
-    };
-
-    return (
-      <div className="overflow-x-auto bg-white rounded-xl shadow-md">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr className="text-gray-600 uppercase text-sm leading-normal">
-              <th className="py-3 px-6 text-center">Imagen</th>
-              <th className="py-3 px-6 text-left">Nombre</th>
-              <th className="py-3 px-6 text-left">Descripción</th>
-              <th className="py-3 px-6 text-left">Categoría</th>
-              <th className="py-3 px-6 text-center">Precio</th>
-              <th className="py-3 px-6 text-center">Disponible</th>
-              <th className="py-3 px-6 text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-800 text-sm font-light divide-y divide-gray-200">
-            {platosFiltrados.length === 0 ? (
-              <tr><td colSpan="7" className="text-center py-8 text-gray-500">
-                  {platos.length === 0 ? "Cargando datos..." : "No hay platos con este filtro."}
-              </td></tr>
-            ) : (
-              platosFiltrados.map((dish) => (
-                <tr key={dish.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="py-3 px-6 text-center">
-                    <img src={dish.imagen || "https://via.placeholder.com/40"} alt="img" className="w-10 h-10 rounded-md object-cover mx-auto"/>
-                  </td>
-                  <td className="py-3 px-6 text-left font-medium">{dish.nombre || dish.name}</td>
-                  <td className="py-3 px-6 text-left">
-                    {dish.descripcion && dish.descripcion.length > 30 ? `${dish.descripcion.substring(0, 30)}...` : dish.descripcion}
-                  </td>
-                  <td className="py-3 px-6 text-left">{getCategoryName(dish.categoria_id || dish.categoria || dish.category)}</td>
-                  <td className="py-3 px-6 text-center">${parseFloat(dish.precio || dish.price || 0).toFixed(2)}</td>
-                  <td className="py-3 px-6 text-center">
-                    <span className={`py-1 px-3 rounded-full text-xs font-semibold ${
-                        (dish.available !== undefined ? dish.available : (dish.disponible !== undefined ? dish.disponible : true)) ? "bg-green-200 text-green-600" : "bg-red-200 text-red-600"
-                    }`}>
-                      {(dish.available !== undefined ? dish.available : (dish.disponible !== undefined ? dish.disponible : true)) ? "Sí" : "No"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-6 text-center space-x-2">
-                    <button onClick={() => handleEdit(dish)} className="text-indigo-600 font-medium">Editar</button>
-                    <button onClick={() => handleDelete(dish.id)} className="text-red-600 font-medium">Eliminar</button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <MessageAlert msg={message} />
-      <div className="bg-red-800 text-white p-4 rounded-lg shadow-xl mb-6">
-        <h1 className="text-3xl font-extrabold text-center text-yellow-400">Gestión de Productos</h1>
-      </div>
-
-      <div className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-md">
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <input 
-            type="text" placeholder="🔍 Buscar plato..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 w-full sm:w-64"
-          />
-          <select
-            value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}
-            className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-          >
-            <option value="">📂 Todas las Categorías</option>
-            {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-          </select>
-        </div>
-        <button onClick={handleCreateNew} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md w-full md:w-auto">
-          + Crear Nuevo Plato
-        </button>
-      </div>
-
-      {renderForm()}
-      {renderTableContent()}
+      <NavBar/>
     </div>
   );
 };
