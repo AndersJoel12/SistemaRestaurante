@@ -7,8 +7,14 @@ const Menu = lazy(() => import("./views/Menu"));
 const Orders = lazy(() => import("./views/Orders"));
 const Kitchen = lazy(() => import("./views/Kitchen"));
 const Tables = lazy(() => import("./views/Tables"));
+
+/*Menu de administrador*/
 const ManageUsers = lazy(() => import("./views/ManageUsers"));
-const ManageMenu = lazy(() => import("./views/ManageMenu.jsx"));
+const ManageMenu = lazy(() => import("./views/ManageMenu"));
+const ManageCategory = lazy(() => import("./views/ManageCategory"));
+const ManageTable = lazy(() => import("./views/ManageTable"));
+
+/*Personal no Autorizado*/
 const Unauthorized = lazy(() => import("./views/Unauthorized.jsx"));
 
 function App() {
@@ -30,6 +36,8 @@ function App() {
           <Route path="/kitchen" element={<Kitchen />} />
           <Route path="/manage-users" element={<ManageUsers />} />
           <Route path="/manage-menu" element={<ManageMenu />} />
+          <Route path="/manage-category" element={<ManageCategory />} />
+          <Route path="/manage-table" element={<ManageTable />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
         </Routes>
       </Suspense>
