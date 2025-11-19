@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-
+import Header from "../components/Header";
 const STORAGE_KEY = "kitchen_kanban";
 
 const Orders = () => {
@@ -19,29 +19,39 @@ const Orders = () => {
   }, []);
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen">
-      <h1 className="text-xl font-bold mb-4">Pedidos realizados</h1>
+    <div className="p-6 bg-red-100 min-h-screen">
+      <Header></Header>
+      <h1 className="text-3xl font-extrabold text-yellow-400 mb-6 text-center">
+        Pedidos realizados
+      </h1>
       <div className="space-y-4">
         {orders.map((orden) => (
           <div
             key={orden.id}
-            className={`p-4 rounded shadow-md border ${
+            className={`p-4 rounded-xl shadow-lg border-4 ${
               orden.status === "Finalizado"
-                ? "border-green-500 bg-green-100"
-                : "border-gray-300 bg-white"
+                ? "border-yellow-400 bg-red-700 text-yellow-200"
+                : "border-red-600 bg-white text-red-800"
             }`}
           >
-            <p className="font-bold">Orden #{orden.id}</p>
-            <p className="text-sm text-gray-600">
-              {orden.timestamp} — Subtotal: ${orden.subtotal}
+            <p className="font-bold text-lg">Orden #{orden.id}</p>
+            <p className="text-sm mb-2">
+              {orden.timestamp} — Subtotal:{" "}
+              <span className="font-bold text-yellow-400">
+                ${orden.subtotal}
+              </span>
             </p>
-            <p className="text-sm font-medium">
-              Estado: {orden.status || "Recibido"}
+            <p className="text-sm font-semibold">
+              Estado:{" "}
+              <span className="uppercase">{orden.status || "Recibido"}</span>
             </p>
             <ul className="ml-4 list-disc text-sm mt-2">
               {orden.items.map((it) => (
                 <li key={it.id}>
-                  {it.quantity}x {it.name}
+                  <span className="text-yellow-500 font-bold">
+                    {it.quantity}x
+                  </span>{" "}
+                  {it.name}
                 </li>
               ))}
             </ul>
