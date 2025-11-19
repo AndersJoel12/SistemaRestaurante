@@ -14,11 +14,11 @@ function Home() {
     const getRedirectPath = (role) => {
         console.log('Esto es: ', role);
         switch (role) {
-            case 'admin' || 'Administrador':
+            case 'administrador':
                 return '/Admin';
-            case 'cocinero' || 'Cocinero':
+            case 'cocinero':
                 return '/Kitchen';
-            case 'mesero' || 'Mesero':
+            case 'mesero':
                 return '/Tables';
             default:
                 return '/Menu';

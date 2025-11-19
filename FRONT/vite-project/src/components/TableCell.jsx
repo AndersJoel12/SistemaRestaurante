@@ -1,8 +1,8 @@
-// src/components/TableCell.jsx
-import React from "react";
-import BooleanSeats from "./BooleanSeats"; // ✅ importación correcta
+import React from 'react';
+import BooleanSeats from './BooleanSeats'; // Importación corregida
 
 const TableCell = ({ table, isSelected, onSelect, ocupacion }) => {
+  // Lógica de color y estado
   let baseColor = "bg-white border-gray-400";
   let hoverColor = "hover:bg-yellow-200";
   let textStyle = "text-gray-800";
@@ -21,30 +21,50 @@ const TableCell = ({ table, isSelected, onSelect, ocupacion }) => {
   }
 
   if (isSelected) {
-    baseColor = "bg-green-600 border-green-800 shadow-lg scale-[1.05]";
+    baseColor = "bg-green-600 border-green-800 shadow-xl ring-4 ring-green-300 scale-[1.05]";
     hoverColor = "hover:bg-green-700";
     textStyle = "text-white";
   }
 
   return (
     <div
-      onClick={() => onSelect(table)}
-      className={`flex flex-col items-center justify-center border-2 rounded-lg p-2 text-sm font-bold h-24 w-full ${baseColor} ${hoverColor} ${textStyle} ${cursor} transform transition-transform duration-200`}
+      onClick={() => {
+        // Solo permitir selección si no está deshabilitada
+        if (table.status !== "deshabilitada") {
+          onSelect(table);
+        }
+      }}
+      className={`
+        flex flex-col items-center justify-center 
+        border-2 rounded-xl 
+        p-2 
+        min-h-[90px] h-full
+        text-xs sm:text-sm font-bold
+        ${baseColor} ${hoverColor} ${textStyle} ${cursor} 
+        transform transition-all duration-200 ease-in-out
+      `}
     >
-      <div className="font-extrabold text-base">MESA {table.number}</div>
+      {/* Título de la Mesa */}
+      <div className="font-extrabold text-sm sm:text-base">
+        MESA {table.number}
+      </div>
 
       {/* Estado con BooleanSeats */}
       <BooleanSeats status={table.status} />
 
+      {/* Capacidad */}
       <div className="flex items-center text-xs font-semibold mt-1">
-        <span className="text-base mr-1">👥</span>
-        {table.capacity} Sillas
+        <span className="text-sm sm:text-base mr-1">👥</span>
+        Capacidad: {table.capacity}
       </div>
 
-      {isSelected && <span className="text-lg mt-1">✅</span>}
-      {ocupacion > 0 && (
-        <div className="text-xs mt-1 text-blue-900 font-semibold">
-          👥 {ocupacion} sentados
+      {/* Indicador de Selección */}
+      {isSelected && <span className="text-lg mt-1">✨</span>}
+
+      {/* Ocupación Actual */}
+      {ocupacion > 0 && table.status === 'ocupada' && (
+        <div className="text-[10px] sm:text-xs mt-1 font-semibold opacity-90">
+          👤 {ocupacion} personas
         </div>
       )}
     </div>

@@ -43,7 +43,7 @@ const Menu = () => {
         ...catResponse.data,
       ]);
       setDishes(dishResponse.data);
-
+      
       if (catResponse.data.length > 0 && activeCategory === "all") {
         setActiveCategory(catResponse.data[0].id);
       }
@@ -67,17 +67,17 @@ const Menu = () => {
   }, [fetchMenuData]);
 
   const filteredDishes = dishes.filter((d) => {
-    const activeCatObj = category.find((cat) => cat.id === activeCategory);
-    const activeCatName = activeCatObj ? activeCatObj.nombre : null;
+    const dishCategoryId  = String(d.categoria_id);
+    const activeCatString = String(activeCategory);
 
     const categoryMatch =
-      activeCategory === "all" ||
-      (activeCatName && d.categoria === activeCatName);
+      activeCatString === "all" || 
+      dishCategoryId === activeCatString;
 
     const dishName = d.nombre || "";
     const searchMatch = dishName
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+    .toLowerCase()
+    .includes(searchTerm.toLowerCase());
 
     return categoryMatch && searchMatch;
   });
@@ -156,7 +156,7 @@ const Menu = () => {
               placeholder="Buscar plato por nombre..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2 border border-red-500 rounded-lg focus:ring-yellow-400 focus:border-yellow-400 transition duration-150 text-gray-800"
+              className="w-full p-2 bg-white border border-red-500 rounded-lg focus:ring-yellow-400 focus:border-yellow-400 transition duration-150 text-gray-800"
             />
           </div>
 

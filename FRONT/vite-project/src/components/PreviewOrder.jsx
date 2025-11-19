@@ -9,6 +9,7 @@ const PreviewOrder = ({ activeOrder }) => {
   // Estado para mostrar notificaciones flotantes (reemplaza a la función alert())
   const [notification, setNotification] = useState(null);
 
+  const navigate = useNavigate();
 
   console.log(
     "PREVIEW_ORDER: Renderizando. Items en orden:",
@@ -65,7 +66,7 @@ const PreviewOrder = ({ activeOrder }) => {
       timestamp: new Date().toLocaleTimeString(),
     };
     console.log("CONFIRM: Objeto de orden a guardar:", newOrder);
-
+    navigate("/orders");
     try {
       const storageKey = "kitchen_kanban";
       const saved = sessionStorage.getItem(storageKey);
