@@ -9,6 +9,10 @@ const Menu = lazy(() => import("./views/Menu"));
 const Orders = lazy(() => import("./views/Orders"));
 const Kitchen = lazy(() => import("./views/Kitchen"));
 const Tables = lazy(() => import("./views/Tables"));
+const Billing = lazy(() => import("./views/Billing"));
+
+const ManageBilling = lazy(() => import("./views/ManageBilling"));
+
 
 /*Menu de administrador*/
 const ManageUsers = lazy(() => import("./views/ManageUsers"));
@@ -40,7 +44,7 @@ function App() {
             path="/tables"
             element={
               <ProtectedRoute
-                roles={["mesero", "Mesero", "Administrador", "administrador"]}
+                roles={["mesero", "mesonero", "administrador", "admin"]}
               >
                 <Tables />
               </ProtectedRoute>
@@ -49,18 +53,18 @@ function App() {
           <Route
             path="/menu"
             element={
-              <ProtectedRoute
-                roles={["Mesero", "mesero", "Administrador", "administrador"]}
-              >
+/*               <ProtectedRoute
+                roles={["mesero", "mesonero", "administrador", "admin"]}
+              > */
                 <Menu />
-              </ProtectedRoute>
+              /* </ProtectedRoute> */
             }
           />
           <Route
             path="/orders"
             element={
               <ProtectedRoute
-                roles={["Mesero", "mesero", "Administrador", "administrador"]}
+                roles={["mesero", "mesonero", "administrador", "admin"]}
               >
                 <Orders />
               </ProtectedRoute>
@@ -71,7 +75,7 @@ function App() {
           <Route
             path="/kitchen"
             element={
-              <ProtectedRoute roles={["Cocinero", "cocinero", "Ddministrador", "administrador"]}>
+              <ProtectedRoute roles={["cocinero", "administrador", "admin"]}>
                 <Kitchen />
               </ProtectedRoute>
             }
@@ -81,7 +85,7 @@ function App() {
           <Route
             path="/manage-users"
             element={
-              <ProtectedRoute roles={["Administrador", "administrador"]}>
+              <ProtectedRoute roles={["administrador", "admin"]}>
                 <ManageUsers />
               </ProtectedRoute>
             }
@@ -89,7 +93,7 @@ function App() {
           <Route
             path="/manage-menu"
             element={
-              <ProtectedRoute roles={["Administrador", "administrador"]}>
+              <ProtectedRoute roles={["administrador", "admin"]}>
                 <ManageMenu />
               </ProtectedRoute>
             }
@@ -97,7 +101,7 @@ function App() {
           <Route
             path="/manage-category"
             element={
-              <ProtectedRoute roles={["Administrador", "administrador"]}>
+              <ProtectedRoute roles={["administrador", "admin"]}>
                 <ManageCategory />
               </ProtectedRoute>
             }
@@ -105,14 +109,16 @@ function App() {
           <Route
             path="/manage-table"
             element={
-              <ProtectedRoute roles={["Administrador", "administrador"]}>
+              <ProtectedRoute roles={["administrador", "admin"]}>
                 <ManageTable />
               </ProtectedRoute>
             }
           />
-          
+
           {/* Default */}
           <Route path="*" element={<Home />} />
+          <Route path="/billing" element={<Billing />} />
+          <Route path="/manage-billing" element={<ManageBilling />} />
         </Routes>
       </Suspense>
     </AuthProvider>

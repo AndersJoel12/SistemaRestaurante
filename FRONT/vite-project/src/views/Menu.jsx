@@ -163,6 +163,7 @@ const Menu = () => {
       return;
     }
 
+    const ESTADO_DEFAULT = "PENDIENTE"; // Ajusta según el estado inicial requerido
     // 3. CONSTRUCCIÓN DEL PAYLOAD
     const itemsPayload = activeOrder.map((it) => ({
       producto_id: it.id,
@@ -175,6 +176,7 @@ const Menu = () => {
       mesa_id: mesaActiva.id,
       empleado_id: empleadoId,
       observacion: "", // Observación general del pedido, si aplica
+      estado_peido: ESTADO_DEFAULT,
       items: itemsPayload,
     };
 
@@ -185,6 +187,8 @@ const Menu = () => {
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
+
+    console.log("Payload de la orden:", payload);
 
     // 5. LLAMADA A LA API
     try {

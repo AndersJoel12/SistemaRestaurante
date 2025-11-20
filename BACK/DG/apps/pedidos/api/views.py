@@ -20,7 +20,11 @@ class MesaViewSet(viewsets.ModelViewSet):
 
 class PedidoViewSet(viewsets.ModelViewSet):
     serializer_class = PedidoSerializer
-    queryset = Pedido.objects.all().order_by('-fecha', '-hora')
+    
+    # 🔥 CORRECCIÓN: Filtramos para no traer los pedidos ya cerrados o facturados
+    # Asumiendo que cuando facturas, el estado cambia a 'CERRADO' o 'PAGADO'
+    def get_queryset(self):
+        return Pedido.objects.exclude(estado_pedido='CERRADO').order_by('-fecha', '-hora')
 
     http_method_names = ['get', 'post', 'head', 'options']
     def create(self, request, *args, **kwargs):

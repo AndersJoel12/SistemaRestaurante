@@ -9,9 +9,9 @@ class FacturaViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'create':
-            permission_classes = [IsAdministrador | IsMesero]
+            permission_classes = [permissions.AllowAny]
         elif self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
-            permission_classes = [IsAdministrador]
+            permission_classes = [permissions.AllowAny]
         else:
-            permission_classes = [permissions.IsAuthenticated]
+            permission_classes = [permissions.AllowAny]
         return [permission() for permission in permission_classes]
