@@ -50,6 +50,7 @@ const GenerarFactura = () => {
               }
           } catch (error) {
               console.error("Error al cargar pedidos:", error);
+              setMessage({ type: "error", text: "Error de conexión al cargar pedidos." });
           }
       };
       cargarPedidos();
@@ -62,7 +63,7 @@ const GenerarFactura = () => {
       const idSeleccionado = e.target.value;
       const pedidoEncontrado = listaPedidos.find(p => p.id.toString() === idSeleccionado);
       
-      // Usamos 'CostoTotal' según tu Backend
+      // Usamos 'CostoTotal' (nombre exacto del backend)
       const monto = pedidoEncontrado ? pedidoEncontrado.CostoTotal : 0;
 
       setFormPago({
@@ -121,10 +122,17 @@ const GenerarFactura = () => {
 
       try {
           await axios.post(`${API_URL}/`, payload);
-          setSuccess(true);
-          setMessage({ type: "success", text: "¡Factura generada exitosamente!" });
           
-          // Reset automático tras 3 segundos
+          setSuccess(true);
+          setMessage({ type: "success", text: "¡Factura generada y Mesa liberada!" });
+
+          // --- 🔥 LÓGICA VISUAL: ELIMINAR PEDIDO PROCESADO ---
+          // Esto hace que desaparezca del select inmediatamente
+          setListaPedidos(prevPedidos => 
+             prevPedidos.filter(p => p.id !== parseInt(formPago.pedidoId))
+          );
+          
+          // Reset automático del formulario
           setTimeout(() => {
               setSuccess(false);
               setFormPago({
@@ -133,8 +141,6 @@ const GenerarFactura = () => {
               setRequiereFactura(false);
               setDatosCliente({ cedula: "", nombre: "", direccion: "", telefono: "" });
               setMessage(null);
-              // Opcional: Recargar pedidos para quitar el que ya se pagó
-              // window.location.reload(); 
           }, 3000);
 
       } catch (error) {
@@ -162,7 +168,7 @@ const GenerarFactura = () => {
           <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 animate-fade-in-down">
               <div className="bg-green-100 p-6 rounded-full mb-4 text-4xl">✅</div>
               <h2 className="text-3xl font-bold text-gray-800 mb-2">¡Factura Generada!</h2>
-              <p className="text-gray-600 mb-6 text-lg">El pedido ha sido procesado correctamente.</p>
+              <p className="text-gray-600 mb-6 text-lg">El pedido ha sido cerrado y la mesa liberada.</p>
               <button 
                   onClick={() => setSuccess(false)}
                   className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition"
@@ -213,7 +219,7 @@ const GenerarFactura = () => {
                     </div>
                     {listaPedidos.length === 0 && (
                         <p className="text-xs text-red-500 mt-1 font-medium">
-                            ⚠️ No hay pedidos pendientes.
+                            ⚠️ No hay pedidos pendientes de pago.
                         </p>
                     )}
                 </div>
