@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 
 import MenuItem from "../components/menu/MenuItem.jsx";
 import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
-import PreviewOrder from "../components/menu/PreviewOrder.jsx";
+import PreviewOrder from "../components/menu/PreviewOrder.jsx"; // Actualizado
 
 import Header from "../components/Header.jsx";
+import Notification from "../components/Notification.jsx"; // Nuevo: Componente de Notificación
 
 const URL_CATEGORY = "http://localhost:8000/api/categorias";
 const URL_DISHES = "http://localhost:8000/api/productos";
+const URL_PEDIDOS = "http://localhost:8000/api/pedidos/"; // Asegúrate de la barra al final
 const STORAGE_KEY = "kitchen_kanban";
 
 const Menu = () => {
@@ -23,13 +26,27 @@ const Menu = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [mesaActiva, setMesaActiva] = useState(null);
+  const [notification, setNotification] = useState(null); // Nuevo estado de notificación
+
+  // --- LÓGICA DE NOTIFICACIÓN (Extraída de PreviewOrder) ---
+  const showNotification = useCallback((type, message) => {
+    setNotification({ type, message });
+    // Limpia la notificación después de 3 segundos
+    setTimeout(() => {
+      setNotification(null);
+    }, 3000);
+  }, []);
+  // --------------------------------------------------------
 
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
     if (storedMesa) {
       setMesaActiva(JSON.parse(storedMesa));
+    } else {
+      showNotification("warning", "Selecciona una mesa antes de tomar un pedido.");
+      navigate("/tables");
     }
-  }, []);
+  }, [navigate, showNotification]);
 
   const fetchMenuData = useCallback(async () => {
     setLoading(true);
@@ -46,22 +63,16 @@ const Menu = () => {
         ...catResponse.data,
       ]);
       setDishes(dishResponse.data);
-      
-      
     } catch (error) {
-
       let errorMessage = "Ocurrió un error al obtener los datos del menú.";
-
       if (error.request && !error.response) {
         errorMessage = "Error de red: No se pudo alcanzar el servidor.";
       } else if (error.response) {
         errorMessage = `Error ${error.response.status}: Problema de servidor o permisos.`;
       }
-
       setApiError(errorMessage);
       setCategory([]);
       setDishes([]);
-
     } finally {
       setLoading(false);
     }
@@ -72,17 +83,16 @@ const Menu = () => {
   }, [fetchMenuData]);
 
   const filteredDishes = dishes.filter((d) => {
-    const dishCategoryId  = String(d.categoria_id);
+    const dishCategoryId = String(d.categoria_id);
     const activeCatString = String(activeCategory);
 
     const categoryMatch =
-      activeCatString === "all" || 
-      dishCategoryId === activeCatString;
+      activeCatString === "all" || dishCategoryId === activeCatString;
 
     const dishName = d.nombre || "";
     const searchMatch = dishName
-    .toLowerCase()
-    .includes(searchTerm.toLowerCase());
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
 
     return categoryMatch && searchMatch;
   });
@@ -114,33 +124,89 @@ const Menu = () => {
     });
   };
 
-  const calcularSubtotal = (order) =>
-    order.reduce((sum, item) => sum + item.precio * item.quantity, 0);
+  const sendOrder = async () => {
+    let token = null;
+    let empleadoId = null;
 
-  const goReview = () => {
-    if (totalItems === 0) return;
+    // 1. OBTENER TOKEN Y EMPLEADO ID
+    try {
+      const tokenString = localStorage.getItem("authTokens");
 
-    const nuevaOrden = {
-      id: Date.now(),
-      timestamp: new Date().toLocaleString(),
-      subtotal: calcularSubtotal(activeOrder),
-      status: "Recibido",
-      items: activeOrder.map((it) => ({
-        id: it.id,
-        name: it.nombre,
-        quantity: it.quantity,
-      })),
-      mesa: mesaActiva?.number || "N/A", // 👈 este campo es clave
+      if (tokenString) {
+        const userData = JSON.parse(tokenString);
+        token = userData.access;
+
+        if (token) {
+          const decodedToken = jwtDecode(token);
+          empleadoId = decodedToken.user_id;
+
+          console.log("Empleado ID decodificado:", empleadoId);
+        }
+      }
+    } catch (error) {
+      console.error("Error al obtener/decodificar el token JWT:", error);
+      showNotification("error", "Error de autenticación: No se pudo verificar el empleado.");
+      return;
+    }
+
+    // 2. VALIDACIONES
+    if (totalItems === 0 || !mesaActiva || !mesaActiva.id) {
+
+      console.log(totalItems, mesaActiva, mesaActiva.id);
+      showNotification("warning", "La orden está vacía o no hay una mesa activa.");
+      return;
+    }
+
+    if (!empleadoId) {
+      console.log("Empleado ID no encontrado.", empleadoId);
+      showNotification("error", "No se pudo obtener la información del empleado. ¿Sesión expirada?");
+      return;
+    }
+
+    // 3. CONSTRUCCIÓN DEL PAYLOAD
+    const itemsPayload = activeOrder.map((it) => ({
+      producto_id: it.id,
+      cantidad: it.quantity,
+      // Se asume que 'observacion' se puede añadir al item, aunque no esté en el ejemplo actual.
+      observacion: it.observacion || "", 
+    }));
+
+    const payload = {
+      mesa_id: mesaActiva.id,
+      empleado_id: empleadoId,
+      observacion: "", // Observación general del pedido, si aplica
+      items: itemsPayload,
     };
 
-    const saved = sessionStorage.getItem(STORAGE_KEY);
-    let parsed = saved
-      ? JSON.parse(saved)
-      : { Recibido: [], Pendiente: [], Finalizado: [] };
-    parsed.Recibido.push(nuevaOrden);
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+    // 4. CONFIGURACIÓN DE HEADERS (Importante: debe ir antes de la llamada)
+    const headers = {
+        "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
 
-    navigate("/orders");
+    // 5. LLAMADA A LA API
+    try {
+      const response = await axios.post(URL_PEDIDOS, payload, {
+        headers: headers,
+      });
+
+      console.log("Orden enviada exitosamente:", response.data);
+      showNotification("success", `¡Orden a Mesa ${mesaActiva.number} enviada!`);
+      setActiveOrder([]); // Limpiar la orden actual
+      navigate("/orders"); // Navegar a la vista de órdenes para verificar
+    } catch (error) {
+      console.error("Error al enviar la orden:", error.response || error);
+      let errorMessage = "Ocurrió un error al enviar la orden al servidor.";
+      if (error.response && error.response.data) {
+          // Intenta obtener un mensaje de error detallado del backend
+          errorMessage = error.response.data.detail || JSON.stringify(error.response.data);
+      } else if (error.request) {
+          errorMessage = "Error de red: El servidor no respondió.";
+      }
+      showNotification("error", `Error al enviar: ${errorMessage}`);
+    }
   };
 
   return (
@@ -152,7 +218,10 @@ const Menu = () => {
           📌 Pedido para Mesa {mesaActiva.number} ({mesaActiva.capacity} sillas)
         </div>
       )}
-  
+
+      {/* Renderiza el componente de Notificación flotante */}
+      <Notification notification={notification} /> 
+      
       <MenuFilterBar
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -162,6 +231,7 @@ const Menu = () => {
       />
 
       <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
+        {/* ... Lógica de Carga y Error ... */}
         {loading ? (
           <p className="col-span-full text-center text-red-700 font-semibold">
             ⏳ Cargando menú...
@@ -190,7 +260,8 @@ const Menu = () => {
       {totalItems > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-transparent pointer-events-none">
           <div className="max-w-4xl mx-auto pointer-events-auto">
-            <PreviewOrder activeOrder={activeOrder} onReview={goReview} />
+            {/* Pasamos la función sendOrder y showNotification a PreviewOrder */}
+            <PreviewOrder activeOrder={activeOrder} onConfirm={sendOrder} showNotification={showNotification} />
           </div>
         </div>
       )}

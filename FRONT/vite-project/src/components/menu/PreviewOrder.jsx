@@ -1,133 +1,36 @@
 import React, { useState } from "react";
+
 // Componente para la previsualización y confirmación de la orden.
-// NOTA: Se asume que los items del plato tienen la propiedad 'precio' y 'nombre'
-const PreviewOrder = ({ activeOrder }) => {
+// Recibe onConfirm (que es Menu.sendOrder) y showNotification del padre.
+const PreviewOrder = ({ activeOrder, onConfirm, showNotification }) => {
   // --- 1. ESTADOS ---
   const [showModal, setShowModal] = useState(false); // Controla la visibilidad del modal de revisión
-  // Estado para mostrar notificaciones flotantes (reemplaza a la función alert())
-  const [notification, setNotification] = useState(null);
 
-  console.log(
-    "PREVIEW_ORDER: Renderizando. Items en orden:",
-    activeOrder.length
-  );
-
-  // --- 2. CÁLCULOS DERIVADOS ---
-
-  // Cantidad total de platos en la orden
   const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
-
-  console.log("TOTAL_ITEMS: ", totalItems);
 
   // Cálculo del subtotal: sumamos (precio * cantidad) de cada item.
   const subtotal = activeOrder
     .reduce(
       (sum, i) => {
         const itemPrice = parseFloat(i.precio) || 0;
-
         return sum + itemPrice * (i.quantity || 0);
       },
-      0 
+      0
     )
     .toFixed(2); // Formatea a dos decimales
 
-    console.log(subtotal);
-
-  // Función unificada para mostrar mensajes de notificación
-  const showNotification = (type, message) => {
-    console.log(`NOTIFICATION: Tipo: ${type}, Mensaje: ${message}`);
-    setNotification({ type, message });
-    // Limpia la notificación después de 3 segundos
-    setTimeout(() => {
-      setNotification(null);
-    }, 3000);
-  };
-
-  // --- 3. MANEJO DE CONFIRMACIÓN Y ALMACENAMIENTO ---
-  const handleConfirm = () => {
-    console.log(
-      "CONFIRM: Iniciando el proceso de envío de orden a sessionStorage."
-    );
-
-    // Validación de orden vacía
+  const handleSendOrder = () => {
     if (totalItems === 0) {
       showNotification(
         "error",
         "La orden está vacía. Añade platos antes de enviar."
       );
-      console.warn("CONFIRM: Orden vacía. Abortando envío.");
       return;
     }
 
-    // Construcción del objeto de la nueva orden
-    const newOrder = {
-      id: Date.now(), // ID basado en el timestamp, único para esta sesión
-      items: activeOrder,
-      subtotal: subtotal,
-      status: "Recibido", // Estado inicial para el Kanban de cocina
-      timestamp: new Date().toLocaleTimeString(),
-    };
-    console.log("CONFIRM: Objeto de orden a guardar:", newOrder);
-    
-    try {
-      const storageKey = "kitchen_kanban";
-      const saved = sessionStorage.getItem(storageKey);
-
-      console.log(`STORAGE: Recuperando clave '${storageKey}'.`);
-
-      // Inicializa la estructura del Kanban si no existe, o la parsea
-      const parsed = saved
-        ? JSON.parse(saved)
-        : {
-            Recibido: [],
-            Pendiente: [],
-            Finalizado: [],
-          };
-
-      // Validación de duplicado (si se hace click muy rápido)
-      const all = [
-        ...parsed.Recibido,
-        ...parsed.Pendiente,
-        ...parsed.Finalizado,
-      ];
-      const exists = all.some((o) => o.id === newOrder.id);
-
-      if (exists) {
-        showNotification(
-          "warning",
-          "Esta orden con el mismo ID ya fue enviada."
-        );
-        console.warn(
-          "STORAGE_WARNING: Se intentó enviar la misma orden dos veces."
-        );
-        return;
-      }
-
-      // Añade la nueva orden al inicio de la columna 'Recibido'
-      const updated = {
-        ...parsed,
-        Recibido: [newOrder, ...parsed.Recibido],
-      };
-
-      // Guarda el estado actualizado del Kanban en sessionStorage
-      sessionStorage.setItem(storageKey, JSON.stringify(updated));
-      console.log("STORAGE: Orden guardada y marcada como 'Recibido'.");
-
-      showNotification(
-        "success",
-        "¡Orden enviada a cocina! Continúa añadiendo platos o cierra."
-      );
-      setShowModal(false); // Cierra el modal
-    } catch (e) {
-      console.error(
-        "STORAGE_ERROR: Error al guardar la orden en sessionStorage:",
-        e
-      );
-      showNotification(
-        "error",
-        "No se pudo enviar la orden. Error de almacenamiento."
-      );
-    }
+    // 🛑 IMPORTANTE: Llamada a la función del padre (Menu.jsx) que hace el POST a la API
+    onConfirm(); 
+    setShowModal(false); // Cierra el modal
   };
 
   // --- Renderizado del componente y el modal ---
@@ -136,7 +39,6 @@ const PreviewOrder = ({ activeOrder }) => {
       {/* Botón Flotante para Abrir el Modal */}
       <button
         onClick={() => {
-          console.log("CLICK: Botón '🛒'. Abriendo modal de revisión.");
           setShowModal(true);
         }}
         // Clases para posicionamiento y estilo impactante (fácil de tocar en móvil)
@@ -145,27 +47,12 @@ const PreviewOrder = ({ activeOrder }) => {
         🛒
       </button>
 
-      {/* Notificación Flotante (Reemplazo de alert()) */}
-      {notification && (
-        <div
-          className={`fixed top-4 right-4 z-[60] p-4 rounded-lg shadow-xl text-white font-semibold 
-      ${
-        notification.type === "success"
-          ? "bg-green-600"
-          : notification.type === "error"
-          ? "bg-red-600"
-          : "bg-yellow-600"
-      } transition-all duration-300 ease-in-out`}
-        >
-          {notification.message}
-        </div>
-      )}
+      {/* NOTIFICACIÓN: Ahora se maneja en el padre (Menu.jsx) */}
 
       {/* Modal de Revisión de Orden */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
-          // Permite cerrar el modal haciendo clic fuera de él
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowModal(false);
           }}
@@ -213,7 +100,6 @@ const PreviewOrder = ({ activeOrder }) => {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    console.log("CLICK: Botón CERRAR modal.");
                     setShowModal(false);
                   }}
                   className="flex-1 py-3 font-bold text-white rounded-lg bg-gray-500 hover:bg-gray-600 transition duration-150 shadow-md"
@@ -221,7 +107,7 @@ const PreviewOrder = ({ activeOrder }) => {
                   CERRAR
                 </button>
                 <button
-                  onClick={handleConfirm}
+                  onClick={handleSendOrder} // Llama a la nueva función de envío
                   disabled={totalItems === 0}
                   className={`flex-1 py-3 font-bold text-white rounded-lg transition duration-150 shadow-md ${
                     totalItems > 0
@@ -240,4 +126,5 @@ const PreviewOrder = ({ activeOrder }) => {
   );
 };
 
+// React.memo sigue siendo útil para optimización.
 export default React.memo(PreviewOrder);

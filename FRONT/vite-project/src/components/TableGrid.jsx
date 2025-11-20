@@ -12,6 +12,7 @@ const API_URL = "http://localhost:8000/api/mesas";
 // Componente: { number: 1, capacity: 4, status: "libre"/"ocupada"/"deshabilitada" }
 const transformData = (apiMesas) => {
   return apiMesas.map((mesa) => ({
+    id: mesa.id,
     number: mesa.numero,
     capacity: mesa.capacidad,
     // TRUE en la API significa libre/disponible (asumimos por el contexto de 'apartar')
