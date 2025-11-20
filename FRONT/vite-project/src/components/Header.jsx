@@ -9,7 +9,6 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🔐 Leer sesión al montar
   useEffect(() => {
     const sesionGuardada = sessionStorage.getItem("usuario_sesion");
     if (sesionGuardada) {
@@ -17,7 +16,6 @@ const Header = () => {
     }
   }, []);
 
-  // 🔠 Título dinámico según ruta
   const getPageTitle = (pathname) => {
     const pathSegment = pathname.split("/")[1] || "menu";
     const titles = {
@@ -35,7 +33,6 @@ const Header = () => {
 
   const currentTitle = getPageTitle(location.pathname);
 
-  // 🔚 Cerrar sesión
   const handleLogout = () => {
     sessionStorage.removeItem("usuario_sesion");
     setUsuarioSesion(null);
@@ -44,12 +41,12 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-20 bg-red-800 shadow-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    <header className="sticky top-0 z-50 bg-red-800 shadow-xl w-full">
+      <div className="w-full">
+        <div className="flex justify-between items-center h-16 w-full">
           {/* IZQUIERDA: LOGO */}
           <div className="w-1/3 flex justify-start items-center">
-            <Link to="/">
+            <Link to="/" className="flex items-center">
               <img
                 className="h-10 w-auto"
                 src={Logo}
@@ -59,19 +56,20 @@ const Header = () => {
           </div>
 
           {/* CENTRO: TÍTULO */}
-          <div className="w-1/3 flex justify-center">
+          <div className="w-1/3 flex justify-center items-center">
             <span className="text-amber-300 text-xl font-extrabold tracking-widest">
               {currentTitle}
             </span>
           </div>
 
           {/* DERECHA: USUARIO */}
-          <div className="w-1/3 flex justify-end">
-            <div className="relative">
+          <div className="w-1/3 flex justify-end items-center">
+            <div className="relative flex items-center">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center space-x-2 text-amber-300 px-3 py-2 rounded-lg hover:bg-red-700 transition"
+                className="flex items-center space-x-2 text-amber-300 h-full hover:bg-red-700 transition"
               >
+                {/* Ícono siempre visible */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-6 w-6"
@@ -86,18 +84,19 @@ const Header = () => {
                     d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span className="font-semibold">
+
+                {/* Texto solo visible en pantallas medianas hacia arriba */}
+                <span className="hidden md:block font-semibold truncate">
                   {usuarioSesion
                     ? `${usuarioSesion.rol?.toUpperCase() || "ROL"} - ${
-                        usuarioSesion.nombre || "SIN CORREO"
+                        usuarioSesion.email || "SIN CORREO"
                       }`
                     : "Invitado"}
                 </span>
               </button>
 
-              {/* MENÚ DESPLEGABLE */}
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-40">
+                <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                   <div className="py-2 px-4 text-sm text-gray-700 border-b border-gray-200">
                     {usuarioSesion ? (
                       <>
@@ -115,7 +114,7 @@ const Header = () => {
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-100 hover:text-red-700 font-medium transition-colors"
+                    className="block w-full text-left py-2 text-sm text-gray-700 hover:bg-red-100 hover:text-red-700 font-medium transition-colors"
                   >
                     Cerrar Sesión
                   </button>

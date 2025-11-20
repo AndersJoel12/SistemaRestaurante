@@ -33,10 +33,9 @@ const PreviewOrder = ({ activeOrder, onConfirm, showNotification }) => {
     setShowModal(false); // Cierra el modal
   };
 
-  // --- Renderizado del componente y el modal ---
   return (
     <>
-      {/* Botón Flotante para Abrir el Modal */}
+      {/* Botón Flotante */}
       <button
         onClick={() => {
           setShowModal(true);
@@ -49,7 +48,7 @@ const PreviewOrder = ({ activeOrder, onConfirm, showNotification }) => {
 
       {/* NOTIFICACIÓN: Ahora se maneja en el padre (Menu.jsx) */}
 
-      {/* Modal de Revisión de Orden */}
+      {/* Modal */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
@@ -57,14 +56,12 @@ const PreviewOrder = ({ activeOrder, onConfirm, showNotification }) => {
             if (e.target === e.currentTarget) setShowModal(false);
           }}
         >
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-[95%] max-w-md relative transition-all duration-300">
-            {/* Encabezado del Modal */}
-            <h2 className="text-2xl font-extrabold text-red-700 border-b-2 border-red-100 pb-3 mb-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-[95%] max-w-md">
+            <h2 className="text-2xl font-extrabold text-red-700 border-b-2 pb-3 mb-4">
               📋 Resumen de Orden ({totalItems} plato
               {totalItems !== 1 ? "s" : ""})
             </h2>
 
-            {/* Lista de Platos (Scrollable) */}
             <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
               {totalItems === 0 ? (
                 <p className="text-gray-500 italic text-center py-4">
@@ -90,7 +87,6 @@ const PreviewOrder = ({ activeOrder, onConfirm, showNotification }) => {
               )}
             </div>
 
-            {/* Footer: Subtotal y Botones de Acción */}
             <div className="mt-6 pt-4 border-t border-gray-300">
               <div className="flex justify-between font-bold text-xl mb-4">
                 <span>SUBTOTAL:</span>
@@ -109,7 +105,7 @@ const PreviewOrder = ({ activeOrder, onConfirm, showNotification }) => {
                 <button
                   onClick={handleSendOrder} // Llama a la nueva función de envío
                   disabled={totalItems === 0}
-                  className={`flex-1 py-3 font-bold text-white rounded-lg transition duration-150 shadow-md ${
+                  className={`flex-1 py-3 font-bold text-white rounded-lg ${
                     totalItems > 0
                       ? "bg-red-700 hover:bg-red-800"
                       : "bg-gray-400 cursor-not-allowed"

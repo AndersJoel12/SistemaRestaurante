@@ -1,55 +1,40 @@
-import React from "react";
+import React, { useState } from "react";
 
-// Recibe la función centralizada 'updateOrder' en lugar de setActiveOrder
 const MenuItem = ({ dish, activeOrder, updateOrder }) => {
-  // --- Lógica de Cantidad ---
-  // Busca si el plato ya existe en la orden
   const itemInOrder = activeOrder?.find((item) => item.id === dish.id);
   const quantity = itemInOrder ? itemInOrder.quantity : 0;
+  const [showControls, setShowControls] = useState(false);
 
-  /**
-   * Gestiona el aumento o disminución de la cantidad y llama al padre para actualizar el estado.
-   * @param {number} change - El cambio de cantidad (+1 o -1).
-   */
   const handleUpdateQuantity = (change) => {
-    // Evita añadir platos si no están disponibles
-    if (!dish.disponible && change > 0) {
-      return;
-    }
+    if (!dish.disponible && change > 0) return;
 
     const newQuantity = quantity + change;
 
     if (newQuantity <= 0) {
-      // Si la cantidad es 0 o menos, envía la acción 'remove' al padre
       updateOrder(dish, "remove", 0);
+      setShowControls(false);
     } else if (quantity === 0 && change > 0) {
-      // Si antes no estaba en la orden, envía la acción 'add'
       updateOrder(dish, "add", newQuantity);
+      setShowControls(true);
     } else {
-      // Si ya estaba, envía la acción 'update' con la nueva cantidad
       updateOrder(dish, "update", newQuantity);
     }
   };
 
-  // -------------------------------------------------------------------------------------------------------
-  // Estilos y Renderizado
-  // ---------------------------------------------------------------------------------------------------
-  // Añado 'sm:p-6' para más padding en pantallas grandes, 'md:text-left' para el texto, etc.
   const cardClasses = `
-  flex flex-col max-h-100 
-  justify-between bg-white 
-  p-3 sm:p-4 rounded-xl shadow-lg 
-  transform transition duration-300 
-  ${
-    dish.disponible
-      ? "hover:shadow-2xl hover:-translate-y-1"
-      : "opacity-50 cursor-not-allowed grayscale" // Estilo para platos agotados
-  }
+    flex flex-col justify-between bg-white 
+    p-3 sm:p-4 rounded-xl shadow-lg 
+    transform transition duration-300 
+    min-h-[300px] overflow-hidden
+    ${
+      dish.disponible
+        ? "hover:shadow-2xl hover:-translate-y-1"
+        : "opacity-50 cursor-not-allowed grayscale"
+    }
   `;
 
-  // Hago los botones ligeramente más pequeños en móviles 'w-7 h-7' y normales en pantallas grandes 'sm:w-8 sm:h-8'
   const buttonClass =
-    "w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white font-bold transition-transform transform hover:scale-110 shadow-md flex items-center justify-center text-lg";
+    "rounded-full text-white font-bold transition-transform transform hover:scale-110 shadow-md flex items-center justify-center";
 
   const getAvailabilityStatus = () => (
     <span
@@ -63,46 +48,80 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
     </span>
   );
 
-  const renderClientMode = () => (
-    // Reduzco el margen superior 'mt-2' en móviles, y el tamaño del precio 'text-lg'
-    <div className="flex items-center justify-between mt-2 sm:mt-3 p-1 sm:p-2">
-      <span className="flex text-lg sm:text-xl font-extrabold text-black">
-        <span className="text-red-700 mr-0.5 sm:mr-0">$</span>
-        {/* Asegura que el precio sea un número flotante y se muestre con dos decimales */}
+  // 📱 Controles en móvil
+  const renderMobileControls = () => (
+    <div className="flex flex-col items-center mt-2 sm:hidden">
+      {/* Precio centrado */}
+      <span className="text-base font-extrabold text-black mb-2">
+        <span className="text-red-700">$</span>
+        {parseFloat(dish.precio || 0).toFixed(2)}
+        <span className="text-red-700 ml-1">Ref</span>
+      </span>
+
+      {/* Controles alineados */}
+      <div className="flex items-center space-x-2">
+        {/* Botón + */}
+        <button
+          onClick={() => handleUpdateQuantity(1)}
+          className={`${buttonClass} bg-green-500 hover:bg-green-600 w-8 h-8 text-sm`}
+          aria-label={`Añadir uno de ${dish.nombre}`}
+        >
+          +
+        </button>
+
+        {/* Mostrar cantidad y botón – solo si hay cantidad */}
+        {quantity > 0 && (
+          <>
+            <span className="w-8 text-center font-bold text-gray-800 bg-gray-100 rounded">
+              {quantity}
+            </span>
+            <button
+              onClick={() => handleUpdateQuantity(-1)}
+              className={`${buttonClass} bg-red-500 hover:bg-red-600 w-8 h-8 text-sm`}
+              aria-label={`Quitar uno de ${dish.nombre}`}
+            >
+              –
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  // 💻 Controles en desktop
+  const renderDesktopControls = () => (
+    <div className="hidden sm:flex items-center justify-between mt-3">
+      <span className="flex items-center text-lg font-extrabold text-black">
+        <span className="text-red-700 mr-1">$</span>
         {parseFloat(dish.precio || 0).toFixed(2)}
         <span className="text-red-700 ml-1">Ref</span>
       </span>
 
       {dish.disponible ? (
-        // Reduzco el espaciado 'space-x-1' en móviles
-        <div className="flex items-center space-x-1 sm:space-x-2">
-          {/* Botón para restar cantidad (solo visible si quantity > 0) */}
+        <div className="flex items-center space-x-2">
           {quantity > 0 && (
             <button
               onClick={() => handleUpdateQuantity(-1)}
-              className={`${buttonClass} bg-red-500 hover:bg-red-600`}
+              className={`${buttonClass} bg-red-500 hover:bg-red-600 w-8 h-8 text-sm`}
               aria-label={`Quitar uno de ${dish.nombre}`}
             >
               -
             </button>
           )}
-          {/* Muestra la cantidad actual (solo visible si quantity > 0) */}
           {quantity > 0 && (
-            <span className="text-base sm:text-lg font-bold w-5 sm:w-6 text-center text-gray-800">
+            <span className="w-8 text-center font-bold text-gray-800 bg-gray-100 rounded">
               {quantity}
             </span>
           )}
-          {/* Botón para añadir cantidad */}
           <button
             onClick={() => handleUpdateQuantity(1)}
-            className={`${buttonClass} bg-green-500 hover:bg-green-600`}
+            className={`${buttonClass} bg-green-500 hover:bg-green-600 w-8 h-8 text-sm`}
             aria-label={`Añadir uno de ${dish.nombre}`}
           >
             +
           </button>
         </div>
       ) : (
-        // Muestra el estado si está agotado
         getAvailabilityStatus()
       )}
     </div>
@@ -110,35 +129,31 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
 
   return (
     <div className={cardClasses}>
-      {/* --- Imagen del Plato --- */}
-      <div className="mb-2 sm:mb-3">
+      {/* Imagen */}
+      <div className="mb-2">
         <img
-          // Ajusto la altura de la imagen a 'h-36' en móviles y 'sm:h-40' en pantallas más grandes
-          src={
-            "https://placehold.co/300x160/ef4444/ffffff?text=Plato%20No%20Image"
-          }
+          src="https://placehold.co/300x160/ef4444/ffffff?text=Plato%20No%20Image"
           alt={dish.nombre}
-          className="w-full h-36 sm:h-40 object-cover rounded-lg"
+          className="w-full h-36 sm:h-40 object-cover rounded-lg aspect-[3/2]"
         />
       </div>
-      {/* --- Cuerpo de la Carta --- */}
+
+      {/* Info */}
       <div className="flex-grow">
-        {/* Ajusto el tamaño del título 'text-lg' en móviles y 'sm:text-xl' en pantallas grandes */}
-        <h3 className="text-lg sm:text-xl mt-1 sm:mt-2 font-bold text-gray-800 leading-tight">
+        <h3 className="text-lg sm:text-xl mt-1 font-bold text-gray-800 leading-tight">
           {dish.nombre}
         </h3>
-        {/* Hago el badge de categoría ligeramente más pequeño y ajusto márgenes */}
         <span className="mt-1 text-xs text-red-600 font-semibold px-2 py-0.5 bg-red-100 rounded-full uppercase tracking-wider inline-block">
           {dish.categoria}
         </span>
-
-        {/* Descripción (Ajusto el margen superior) */}
-        <p className="text-sm text-gray-600 mt-2 mb-1 line-clamp-2">
+        <p className="text-xs sm:text-sm text-gray-600 mt-2 mb-1 line-clamp-1 sm:line-clamp-2">
           {dish.descripcion}
         </p>
       </div>
-      {/* Renderiza el precio y los botones de cantidad */}
-      {renderClientMode()}{" "}
+
+      {/* Controles */}
+      {dish.disponible ? renderMobileControls() : getAvailabilityStatus()}
+      {dish.disponible && renderDesktopControls()}
     </div>
   );
 };

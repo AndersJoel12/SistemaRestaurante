@@ -1,3 +1,4 @@
+// src/views/Menu.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -84,13 +85,17 @@ const Menu = () => {
 
   const filteredDishes = dishes.filter((d) => {
     const dishCategoryId = String(d.categoria_id);
+    const dishCategoryId = String(d.categoria_id);
     const activeCatString = String(activeCategory);
 
     const categoryMatch =
       activeCatString === "all" || dishCategoryId === activeCatString;
+      activeCatString === "all" || dishCategoryId === activeCatString;
 
     const dishName = d.nombre || "";
     const searchMatch = dishName
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
 
@@ -215,7 +220,9 @@ const Menu = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
-      <Header />
+      {/* 🔐 Bloque fijo que agrupa los 3 */}
+      <div className="sticky top-0 z-40 shadow-md">
+        <Header />
 
       {mesaActiva && (
         <div className="bg-yellow-400 text-red-900 font-bold text-center py-2 shadow-md">
@@ -234,6 +241,7 @@ const Menu = () => {
         category={category}
       />
 
+      {/* 🔽 Contenido desplazable */}
       <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
         {/* ... Lógica de Carga y Error ... */}
         {loading ? (
@@ -267,6 +275,17 @@ const Menu = () => {
             {/* Pasamos la función sendOrder y showNotification a PreviewOrder */}
             <PreviewOrder activeOrder={activeOrder} onConfirm={sendOrder} showNotification={showNotification} />
           </div>
+        </div>
+      )}
+
+      {/* 🔔 Aviso / Toast */}
+      {mensaje && (
+        <div
+          className="fixed top-20 left-1/2 transform -translate-x-1/2 
+                        bg-green-500 text-white px-4 py-2 rounded shadow-lg 
+                        z-50"
+        >
+          {mensaje}
         </div>
       )}
     </div>
