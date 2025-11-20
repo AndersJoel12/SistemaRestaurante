@@ -1,3 +1,4 @@
+// src/views/Menu.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -5,8 +6,8 @@ import axios from "axios";
 import MenuItem from "../components/menu/MenuItem.jsx";
 import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
 import PreviewOrder from "../components/menu/PreviewOrder.jsx";
-
 import Header from "../components/Header.jsx";
+import SelectedTables from "../components/SelectedTables.jsx"; // 👈 nuevo import
 
 const URL_CATEGORY = "http://localhost:8000/api/categorias";
 const URL_DISHES = "http://localhost:8000/api/productos";
@@ -23,6 +24,9 @@ const Menu = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [mesaActiva, setMesaActiva] = useState(null);
+
+  // 👇 estado para mostrar mensaje/aviso
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
@@ -46,22 +50,16 @@ const Menu = () => {
         ...catResponse.data,
       ]);
       setDishes(dishResponse.data);
-      
-      
     } catch (error) {
-
       let errorMessage = "Ocurrió un error al obtener los datos del menú.";
-
       if (error.request && !error.response) {
         errorMessage = "Error de red: No se pudo alcanzar el servidor.";
       } else if (error.response) {
         errorMessage = `Error ${error.response.status}: Problema de servidor o permisos.`;
       }
-
       setApiError(errorMessage);
       setCategory([]);
       setDishes([]);
-
     } finally {
       setLoading(false);
     }
@@ -72,17 +70,16 @@ const Menu = () => {
   }, [fetchMenuData]);
 
   const filteredDishes = dishes.filter((d) => {
-    const dishCategoryId  = String(d.categoria_id);
+    const dishCategoryId = String(d.categoria_id);
     const activeCatString = String(activeCategory);
 
     const categoryMatch =
-      activeCatString === "all" || 
-      dishCategoryId === activeCatString;
+      activeCatString === "all" || dishCategoryId === activeCatString;
 
     const dishName = d.nombre || "";
     const searchMatch = dishName
-    .toLowerCase()
-    .includes(searchTerm.toLowerCase());
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
 
     return categoryMatch && searchMatch;
   });
@@ -130,7 +127,7 @@ const Menu = () => {
         name: it.nombre,
         quantity: it.quantity,
       })),
-      mesa: mesaActiva?.number || "N/A", // 👈 este campo es clave
+      mesa: mesaActiva?.number || "N/A",
     };
 
     const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -140,27 +137,34 @@ const Menu = () => {
     parsed.Recibido.push(nuevaOrden);
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
 
+    // 👇 mostrar aviso
+    setMensaje("✅ Orden creada correctamente");
+
+    // 👇 ocultar aviso automáticamente después de 3 segundos
+    setTimeout(() => setMensaje(""), 3000);
+
     navigate("/orders");
   };
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
-      <Header />
+      {/* 🔐 Bloque fijo que agrupa los 3 */}
+      <div className="sticky top-0 z-40 shadow-md">
+        <Header />
 
-      {mesaActiva && (
-        <div className="bg-yellow-400 text-red-900 font-bold text-center py-2 shadow-md">
-          📌 Pedido para Mesa {mesaActiva.number} ({mesaActiva.capacity} sillas)
-        </div>
-      )}
-  
-      <MenuFilterBar
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        activeCategory={activeCategory}
-        setActiveCategory={setActiveCategory}
-        category={category}
-      />
+        {/* 👉 Usamos el nuevo componente SelectedTables */}
+        <SelectedTables mesa={mesaActiva} />
 
+        <MenuFilterBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          activeCategory={activeCategory}
+          setActiveCategory={setActiveCategory}
+          category={category}
+        />
+      </div>
+
+      {/* 🔽 Contenido desplazable */}
       <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
         {loading ? (
           <p className="col-span-full text-center text-red-700 font-semibold">
@@ -192,6 +196,17 @@ const Menu = () => {
           <div className="max-w-4xl mx-auto pointer-events-auto">
             <PreviewOrder activeOrder={activeOrder} onReview={goReview} />
           </div>
+        </div>
+      )}
+
+      {/* 🔔 Aviso / Toast */}
+      {mensaje && (
+        <div
+          className="fixed top-20 left-1/2 transform -translate-x-1/2 
+                        bg-green-500 text-white px-4 py-2 rounded shadow-lg 
+                        z-50"
+        >
+          {mensaje}
         </div>
       )}
     </div>
