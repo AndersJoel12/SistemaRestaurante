@@ -11,6 +11,8 @@ const Kitchen = lazy(() => import("./views/Kitchen"));
 const Tables = lazy(() => import("./views/Tables"));
 const Billing = lazy(() => import("./views/Billing"));
 
+const ManageBilling = lazy(() => import("./views/ManageBilling"));
+
 
 /*Menu de administrador*/
 const ManageUsers = lazy(() => import("./views/ManageUsers"));
@@ -116,6 +118,7 @@ function App() {
           {/* Default */}
           <Route path="*" element={<Home />} />
           <Route path="/billing" element={<Billing />} />
+          <Route path="/manage-billing" element={<ManageBilling />} />
         </Routes>
       </Suspense>
     </AuthProvider>
