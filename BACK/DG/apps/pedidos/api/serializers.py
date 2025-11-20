@@ -41,20 +41,19 @@ class ProductoPedidoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("La cantidad debe ser un número positivo.")
         return value
 
-#    def create(self, validated_data):
-#        producto = validated_data['producto']
-#        cantidad = validated_data['cantidad']
-#        precio_unit = producto.precio
-#        subtotal = precio_unit * cantidad
-
-#        validated_data['precio_unit'] = precio_unit
-#        validated_data['subtotal'] = subtotal
-
-#        return super().create(validated_data)
-
 class PedidoSerializer(serializers.ModelSerializer):
     items = ProductoPedidoSerializer(many=True, write_only=True)
     total_items = serializers.SerializerMethodField(read_only=True)
+
+    mesa_id = serializers.PrimaryKeyRelatedField(
+        source='mesa',
+        queryset=Mesa.objects.all(),
+    )
+
+    Empleado_id = serializers.PrimaryKeyRelatedField(
+        source='Empleado',
+        queryset=Empleado.objects.filter(),
+    )
 
     class Meta:
         model = Pedido
@@ -91,12 +90,13 @@ class PedidoSerializer(serializers.ModelSerializer):
             productos_para_crear = []            
 
             for item_data in items_data:
-                producto_id = item_data.pop('producto')
+                producto_instance = item_data.pop('producto')
                 cantidad = item_data['cantidad']
             
-                product_instance = Producto.objects.filter(id=producto_id, disponibilidad=True).first()
+                product_instance = Producto.objects.filter(id=producto_instance.id, disponibe=True).first()
+
                 if not product_instance:
-                    raise serializers.ValidationError({"items": f"Producto ID {producto_id} no existe o no está disponible."})
+                    raise serializers.ValidationError({"items": f"Producto ID {producto_instance.id} no existe o no está disponible."})
 
                 if product_instance:
                     precio_unitario = product_instance.precio
@@ -105,7 +105,7 @@ class PedidoSerializer(serializers.ModelSerializer):
                     productos_para_crear.append(
                         ProductoPedido(
                             pedido=pedido,
-                            producto_id=producto_id,
+                            producto_id=producto_instance.id,
                             cantidad=cantidad,
                             precio_unitario=precio_unitario,
                             subtotal=subtotal,

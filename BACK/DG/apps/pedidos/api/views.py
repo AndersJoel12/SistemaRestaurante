@@ -22,6 +22,17 @@ class PedidoViewSet(viewsets.ModelViewSet):
     serializer_class = PedidoSerializer
     queryset = Pedido.objects.all().order_by('-fecha', '-hora')
 
+    http_method_names = ['get', 'post', 'head', 'options']
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {"message": "Pedido creado con éxito.", "pedido": serializer.data}, 
+            status=status.HTTP_201_CREATED, 
+            headers=headers
+        )
 
     def get_permissions(self):
         if self.action in ['create']:
