@@ -43,28 +43,13 @@ const GenerarFactura = () => {
   // --- EFECTO: CARGAR PEDIDOS ---
   useEffect(() => {
       const cargarPedidos = async () => {
-          console.group("🕵️‍♂️ MENTOR DEBUG: Carga de Pedidos");
-          console.log("1. 🚀 Buscando pedidos en:", `${API_PEDIDOS}/`);
-
           try {
               const response = await axios.get(`${API_PEDIDOS}/`);
-              
               if (Array.isArray(response.data)) {
                   setListaPedidos(response.data);
-                  console.log(`2. 📦 Se cargaron ${response.data.length} pedidos.`);
-                  // Muestra el primer pedido para verificar los nombres de los campos
-                  if (response.data.length > 0) {
-                      console.log("   🔎 Ejemplo de pedido:", response.data[0]);
-                  }
-              } else {
-                  console.warn("⚠️ ALERTA: La respuesta no es una lista.");
               }
-
           } catch (error) {
-              console.error("❌ ERROR AL CARGAR PEDIDOS:", error);
-              setMessage({ type: "error", text: "Error de conexión con el servidor." });
-          } finally {
-              console.groupEnd();
+              console.error("Error al cargar pedidos:", error);
           }
       };
       cargarPedidos();
@@ -77,7 +62,7 @@ const GenerarFactura = () => {
       const idSeleccionado = e.target.value;
       const pedidoEncontrado = listaPedidos.find(p => p.id.toString() === idSeleccionado);
       
-      // CORRECCIÓN CLAVE: Usamos 'CostoTotal' según tu JSON
+      // Usamos 'CostoTotal' según tu Backend
       const monto = pedidoEncontrado ? pedidoEncontrado.CostoTotal : 0;
 
       setFormPago({
@@ -139,7 +124,7 @@ const GenerarFactura = () => {
           setSuccess(true);
           setMessage({ type: "success", text: "¡Factura generada exitosamente!" });
           
-          // Reset automático
+          // Reset automático tras 3 segundos
           setTimeout(() => {
               setSuccess(false);
               setFormPago({
@@ -148,16 +133,16 @@ const GenerarFactura = () => {
               setRequiereFactura(false);
               setDatosCliente({ cedula: "", nombre: "", direccion: "", telefono: "" });
               setMessage(null);
+              // Opcional: Recargar pedidos para quitar el que ya se pagó
+              // window.location.reload(); 
           }, 3000);
 
       } catch (error) {
-          console.error("🔴 Error al enviar:", error);
+          console.error("Error al procesar pago:", error);
           if (error.response?.data) {
-               // Si el error es un objeto JSON, intentamos mostrar la primera clave
                const errData = error.response.data;
                if (typeof errData === 'object') {
                    const firstKey = Object.keys(errData)[0];
-                   // A veces el error es una lista ['Este campo es obligatorio']
                    const msg = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
                    setMessage({ type: "error", text: `Error en ${firstKey}: ${msg}` });
                } else {
@@ -177,7 +162,7 @@ const GenerarFactura = () => {
           <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 animate-fade-in-down">
               <div className="bg-green-100 p-6 rounded-full mb-4 text-4xl">✅</div>
               <h2 className="text-3xl font-bold text-gray-800 mb-2">¡Factura Generada!</h2>
-              <p className="text-gray-600 mb-6 text-lg">El pedido #{formPago.pedidoId} ha sido procesado correctamente.</p>
+              <p className="text-gray-600 mb-6 text-lg">El pedido ha sido procesado correctamente.</p>
               <button 
                   onClick={() => setSuccess(false)}
                   className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition"
@@ -218,7 +203,6 @@ const GenerarFactura = () => {
                             <option value="">-- Seleccione un Pedido --</option>
                             {listaPedidos.map((p) => (
                                 <option key={p.id} value={p.id}>
-                                    {/* CORRECCIÓN: Usamos p.mesa_id y p.CostoTotal */}
                                     Pedido #{p.id} {p.mesa_id ? `- Mesa ${p.mesa_id}` : ''} - ${p.CostoTotal}
                                 </option>
                             ))}
@@ -229,7 +213,7 @@ const GenerarFactura = () => {
                     </div>
                     {listaPedidos.length === 0 && (
                         <p className="text-xs text-red-500 mt-1 font-medium">
-                            ⚠️ No hay pedidos disponibles.
+                            ⚠️ No hay pedidos pendientes.
                         </p>
                     )}
                 </div>
@@ -313,7 +297,7 @@ const GenerarFactura = () => {
             
         </div>
 
-        {/* COLUMNA DERECHA: DATOS CLIENTE (TU ESTILO ORIGINAL) */}
+        {/* COLUMNA DERECHA: DATOS CLIENTE */}
         <div className="lg:col-span-1">
             <div className={`p-6 rounded-2xl shadow-lg border transition-all duration-300 ${requiereFactura ? "bg-white border-blue-500" : "bg-gray-50 border-gray-200"}`}>
                 
