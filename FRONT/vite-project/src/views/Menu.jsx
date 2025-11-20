@@ -1,4 +1,3 @@
-// src/views/Menu.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -35,19 +34,18 @@ const Menu = () => {
     }, 3000);
   }, []);
 
-  // --- VERIFICAR MESA ACTIVA ---
+  // --- VERIFICAR MESA ACTIVA (SIN REDIRECCIÓN FORZADA) ---
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
     if (storedMesa) {
-      setMesaActiva(JSON.parse(storedMesa));
+      const mesa = JSON.parse(storedMesa);
+      setMesaActiva(mesa);
+      showNotification("info", `Mesa ${mesa.number} cargada.`);
     } else {
-      showNotification(
-        "warning",
-        "Selecciona una mesa antes de tomar un pedido."
-      );
-      navigate("/tables");
+      setMesaActiva(null);
+      showNotification("warning", "Modo menú: No hay mesa activa. No se podrá enviar la orden.");
     }
-  }, [navigate, showNotification]);
+  }, [showNotification]);
 
   // --- CARGAR DATOS DEL MENÚ ---
   const fetchMenuData = useCallback(async () => {
@@ -84,23 +82,13 @@ const Menu = () => {
     fetchMenuData();
   }, [fetchMenuData]);
 
-  // --- FILTRADO (CORREGIDO: Sin líneas duplicadas) ---
+  // --- FILTRADO (Limpio y Funcional) ---
   const filteredDishes = dishes.filter((d) => {
-<<<<<<< HEAD
-    const dishCategoryId = String(d.categoria_id);
-    const activeCatString = String(activeCategory);
-
-    const categoryMatch =
-      activeCatString === "all" || dishCategoryId === activeCatString;
-    activeCatString === "all" || dishCategoryId === activeCatString;
-=======
-    // Convertimos a String para asegurar comparación correcta
     const dishCategoryId = String(d.categoria_id);
     const activeCatString = String(activeCategory);
 
     const categoryMatch = 
       activeCatString === "all" || dishCategoryId === activeCatString;
->>>>>>> 320a35d8c696be5bcfbb685867b4eac10c2c4a36
 
     const dishName = d.nombre || "";
     const searchMatch = dishName
@@ -138,7 +126,7 @@ const Menu = () => {
     });
   };
 
-  // --- ENVIAR PEDIDO A DJANGO ---
+  // --- ENVIAR PEDIDO A DJANGO (Lógica Final) ---
   const sendOrder = async () => {
     let token = null;
     let empleadoId = null;
@@ -155,131 +143,61 @@ const Menu = () => {
         }
       }
     } catch (error) {
-<<<<<<< HEAD
-      console.error("Error al obtener/decodificar el token JWT:", error);
-      showNotification(
-        "error",
-        "Error de autenticación: No se pudo verificar el empleado."
-      );
-      return;
-    }
-
-    // 2. VALIDACIONES
-    if (totalItems === 0 || !mesaActiva || !mesaActiva.id) {
-      console.log(totalItems, mesaActiva, mesaActiva.id);
-      showNotification(
-        "warning",
-        "La orden está vacía o no hay una mesa activa."
-      );
-=======
       console.error("Error token:", error);
       showNotification("error", "Error de autenticación.");
       return;
     }
 
-    // 2. Validaciones
+    // 2. Validaciones (El bloqueo real)
     if (totalItems === 0 || !mesaActiva?.id) {
       showNotification("warning", "La orden está vacía o no hay mesa.");
->>>>>>> 320a35d8c696be5bcfbb685867b4eac10c2c4a36
       return;
     }
 
     if (!empleadoId) {
-<<<<<<< HEAD
-      console.log("Empleado ID no encontrado.", empleadoId);
-      showNotification(
-        "error",
-        "No se pudo obtener la información del empleado. ¿Sesión expirada?"
-      );
-      return;
-    }
-
-    const ESTADO_DEFAULT = "Abierto"; // Ajusta según el estado inicial requerido
-    // 3. CONSTRUCCIÓN DEL PAYLOAD
-    const itemsPayload = activeOrder.map((it) => ({
-      producto_id: it.id,
-      cantidad: it.quantity,
-      // Se asume que 'observacion' se puede añadir al item, aunque no esté en el ejemplo actual.
-      observacion: it.observacion || "",
-=======
       showNotification("error", "Sesión expirada. Inicia sesión de nuevo.");
       return;
     }
 
-    // 3. Construir Payload (CORREGIDO: typo estado_pedido)
-    const ESTADO_DEFAULT = "RECIBIDO"; // O "PENDIENTE", según tu backend
+    // 3. Construir Payload
+    const ESTADO_DEFAULT = "RECIBIDO"; 
 
     const itemsPayload = activeOrder.map((it) => ({
       producto_id: it.id,
       cantidad: it.quantity,
       observacion: it.observacion || "", 
->>>>>>> 320a35d8c696be5bcfbb685867b4eac10c2c4a36
     }));
 
     const payload = {
       mesa_id: mesaActiva.id,
-      Empleado_id: empleadoId, // Ojo: En tu serializador anterior era 'Empleado_id' (con mayúscula), verifica tu backend
+      empleado_id: empleadoId, // Corregido a minúscula para el Serializer de Django
       observacion: "", 
-      estado_pedido: ESTADO_DEFAULT, // CORREGIDO: Antes decía estado_peido
+      estado_pedido: ESTADO_DEFAULT, 
       items: itemsPayload,
     };
 
-<<<<<<< HEAD
-    console.log("Empleado ID para el payload:", payload);
-    // 4. CONFIGURACIÓN DE HEADERS (Importante: debe ir antes de la llamada)
-    const headers = {
-      "Content-Type": "application/json",
-    };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-=======
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
->>>>>>> 320a35d8c696be5bcfbb685867b4eac10c2c4a36
 
     // 4. Enviar
     try {
-<<<<<<< HEAD
-      const response = await axios.post(URL_PEDIDOS, payload, {
-        headers: headers,
-      });
-
-      console.log("Orden enviada exitosamente:", response.data);
-      showNotification(
-        "success",
-        `¡Orden a Mesa ${mesaActiva.number} enviada!`
-      );
-      setActiveOrder([]); // Limpiar la orden actual
-      navigate("/orders"); // Navegar a la vista de órdenes para verificar
-    } catch (error) {
-      console.error("Error al enviar la orden:", error.response || error);
-      let errorMessage = "Ocurrió un error al enviar la orden al servidor.";
-      if (error.response && error.response.data) {
-        // Intenta obtener un mensaje de error detallado del backend
-        errorMessage =
-          error.response.data.detail || JSON.stringify(error.response.data);
-      } else if (error.request) {
-        errorMessage = "Error de red: El servidor no respondió.";
-=======
-      await axios.post(URL_PEDIDOS, payload, { headers });
+      const response = await axios.post(URL_PEDIDOS, payload, { headers });
       
       showNotification("success", `¡Orden a Mesa ${mesaActiva.number} enviada!`);
       setActiveOrder([]); 
       
-      // Pequeño delay para que el usuario vea el éxito antes de cambiar de página
+      // Añadimos el delay para ver la notificación antes de navegar
       setTimeout(() => {
           navigate("/orders"); 
       }, 1000);
 
     } catch (error) {
-      console.error("Error enviando:", error);
+      console.error("Error enviando:", error.response || error);
       let errorMessage = "Error al enviar.";
       
+      // Lógica robusta para extraer el error 400 del Backend
       if (error.response?.data) {
-         // Intentamos leer errores específicos del backend
          errorMessage = JSON.stringify(error.response.data);
->>>>>>> 320a35d8c696be5bcfbb685867b4eac10c2c4a36
       }
       
       showNotification("error", `Fallo: ${errorMessage}`);
@@ -294,17 +212,12 @@ const Menu = () => {
         <Header />
 
         {mesaActiva && (
-<<<<<<< HEAD
-          <div className="bg-yellow-400 text-red-900 font-bold text-center py-2 shadow-md">
-            📌 Pedido para Mesa {mesaActiva.number} ({mesaActiva.capacity}{" "}
-            sillas)
-=======
           <div className="bg-yellow-400 text-red-900 font-bold text-center py-2 shadow-sm text-sm md:text-base">
             📌 Pedido para Mesa {mesaActiva.number} ({mesaActiva.capacity} pax)
           </div>
         )}
 
-        {/* Notificación Flotante dentro del contexto visual */}
+        {/* Notificación Flotante */}
         <Notification notification={notification} /> 
         
         <MenuFilterBar
@@ -355,77 +268,10 @@ const Menu = () => {
                 onConfirm={sendOrder} 
                 showNotification={showNotification} 
             />
->>>>>>> 320a35d8c696be5bcfbb685867b4eac10c2c4a36
           </div>
-        )}
+        </div>
+      )}
 
-<<<<<<< HEAD
-        {/* Renderiza el componente de Notificación flotante */}
-        <Notification notification={notification} />
-
-        <MenuFilterBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          activeCategory={activeCategory}
-          setActiveCategory={setActiveCategory}
-          category={category}
-        />
-
-        {/* 🔽 Contenido desplazable */}
-        <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
-          {/* ... Lógica de Carga y Error ... */}
-          {loading ? (
-            <p className="col-span-full text-center text-red-700 font-semibold">
-              ⏳ Cargando menú...
-            </p>
-          ) : apiError ? (
-            <p className="col-span-full text-center text-red-500 font-bold">
-              🚨 Error de API: {apiError}
-            </p>
-          ) : filteredDishes.length > 0 ? (
-            filteredDishes.map((dish) => (
-              <MenuItem
-                key={dish.id}
-                dish={dish}
-                activeOrder={activeOrder}
-                updateOrder={updateOrder}
-              />
-            ))
-          ) : (
-            <p className="col-span-full text-gray-500 text-center">
-              🍽️ No se encontraron platos que coincidan con los criterios de
-              búsqueda.
-            </p>
-          )}
-        </main>
-
-        {totalItems > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-transparent pointer-events-none">
-            <div className="max-w-4xl mx-auto pointer-events-auto">
-              {/* Pasamos la función sendOrder y showNotification a PreviewOrder */}
-              <PreviewOrder
-                activeOrder={activeOrder}
-                onConfirm={sendOrder}
-                showNotification={showNotification}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* 🔔 Aviso / Toast */}
-        {/*mensaje && (
-          <div
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 
-                        bg-green-500 text-white px-4 py-2 rounded shadow-lg 
-                        z-50"
-          >
-            {mensaje}
-          </div>
-        )*/}
-
-      </div>
-=======
->>>>>>> 320a35d8c696be5bcfbb685867b4eac10c2c4a36
     </div>
   );
 };
