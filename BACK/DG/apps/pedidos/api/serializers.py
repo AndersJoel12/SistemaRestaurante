@@ -51,7 +51,7 @@ class PedidoSerializer(serializers.ModelSerializer):
             'items', 
             # 'total_items' # COMENTADO
         ]
-        read_only_fields = ['id', 'fecha', 'hora', 'CostoTotal', 'estado_pedido']
+        read_only_fields = ['id', 'fecha', 'hora', 'CostoTotal']
 
     # FUNCION COMENTADA POR AHORA
     # def get_total_items(self, obj):
