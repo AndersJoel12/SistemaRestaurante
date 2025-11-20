@@ -71,62 +71,62 @@ class PedidoSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'fecha', 'hora', 'CostoTotal']
 
         #FUNCION COMENTADA POR AHORA
-        def get_total_items(self, obj):
-            if hasattr(obj, 'items'):
-                return obj.items.count()
-            return 0
+    def get_total_items(self, obj):
+        if hasattr(obj, 'items'):
+            return obj.items.count()
+        return 0
 
-@transaction.atomic
-def create(self, validated_data):
-    items_data = validated_data.pop('items')
-    
-    if not items_data:
-        raise serializers.ValidationError({"items": "El pedido debe contener al menos un producto."})
+    @transaction.atomic
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+            
+        if not items_data:
+            raise serializers.ValidationError({"items": "El pedido debe contener al menos un producto."})
 
-    mesa_instance = validated_data.pop('mesa') 
-    empleado_instance = validated_data.pop('empleado')
+        mesa_instance = validated_data.pop('mesa') 
+        empleado_instance = validated_data.pop('empleado')
 
-    #if mesa_instance and mesa_instance.estado == False: # Ajusta 'OCUPADA' a tu valor real
-    #    raise serializers.ValidationError({"mesa_id": "La mesa ya está ocupada."})
+            #if mesa_instance and mesa_instance.estado == False: # Ajusta 'OCUPADA' a tu valor real
+            #    raise serializers.ValidationError({"mesa_id": "La mesa ya está ocupada."})
 
-    pedido = Pedido.objects.create(
-        mesa=mesa_instance, 
-        empleado=empleado_instance, 
-        **validated_data
-    )
-    
-    total_cost = Decimal('0.00')
-    productos_para_crear = []
-
-    for item_data in items_data:
-        producto_instance = item_data.pop('producto') 
-        cantidad = item_data['cantidad']
-        
-        if not producto_instance.disponible:
-            raise serializers.ValidationError({"items": f"El producto {producto_instance.nombre} no está disponible."})
-
-        precio_unit = producto_instance.precio
-        subtotal = cantidad * precio_unit
-        
-        productos_para_crear.append(
-            ProductoPedido(
-                pedido=pedido,
-                producto=producto_instance,
-                cantidad=cantidad,
-                precio_unit=precio_unit,
-                subtotal=subtotal,
-                # Usa .get() para 'observacion' para que sea opcional, si no fue sacado por pop()
-                observacion=item_data.get('observacion', ''), 
-            )
+        pedido = Pedido.objects.create(
+            mesa=mesa_instance, 
+            empleado=empleado_instance, 
+            **validated_data
         )
-        total_cost += subtotal
             
-    ProductoPedido.objects.bulk_create(productos_para_crear)
-    
-    pedido.CostoTotal = total_cost
-    pedido.save()
-    
-    #if mesa_instance:
-    #    mesa_instance.ocupar() 
+        total_cost = Decimal('0.00')
+        productos_para_crear = []
+
+        for item_data in items_data:
+            producto_instance = item_data.pop('producto') 
+            cantidad = item_data['cantidad']
+                
+            if not producto_instance.disponible:
+                raise serializers.ValidationError({"items": f"El producto {producto_instance.nombre} no está disponible."})
+
+            precio_unit = producto_instance.precio
+            subtotal = cantidad * precio_unit
+                
+            productos_para_crear.append(
+                ProductoPedido(
+                    pedido=pedido,
+                    producto=producto_instance,
+                    cantidad=cantidad,
+                    precio_unit=precio_unit,
+                    subtotal=subtotal,
+                    # Usa .get() para 'observacion' para que sea opcional, si no fue sacado por pop()
+                    observacion=item_data.get('observacion', ''), 
+                )
+            )
+            total_cost += subtotal
+                    
+        ProductoPedido.objects.bulk_create(productos_para_crear)
             
-    return pedido
+        pedido.CostoTotal = total_cost
+        pedido.save()
+    
+            #if mesa_instance:
+            #mesa_instance.ocupar() 
+            
+        return pedido
