@@ -2,7 +2,6 @@ import "../views/ViewStyles.css";
 import Logo from "../assets/logo.png";
 import { useState } from "react";
 import SignUpModal from "../components/ModalFormSignUp";
-import { useAuth } from "../context/AuthContext";
 
 import { useNavigate } from "react-router-dom";
 
@@ -16,13 +15,14 @@ function Home() {
     const normalizedRole = (role || "").toLowerCase();
 
     switch (normalizedRole) {
-      case "admin":
-      case "administrador": // Coincide con el rol de Administrador
+      case "administrador":
+      case "Administrador": // Coincide con el rol de Administrador
         return "/manage-users"; // Redirige a la gestión de usuarios
       case "cocinero": // Coincide con el rol de Cocinero
+      case "Cocinero":
         return "/kitchen"; // Redirige a la vista de cocina
       case "mesero":
-      case "mesonero": // Coincide con el rol de Mesero/Mesonero
+      case "Mesero": // Coincide con el rol de Mesero/Mesonero
         return "/tables"; // Redirige a la vista de mesas/mesero principal
       default:
         return "/unauthorized"; // En caso de rol desconocido

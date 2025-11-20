@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
 // Componente para la previsualización y confirmación de la orden.
 // NOTA: Se asume que los items del plato tienen la propiedad 'precio' y 'nombre'
 const PreviewOrder = ({ activeOrder }) => {
@@ -8,8 +6,6 @@ const PreviewOrder = ({ activeOrder }) => {
   const [showModal, setShowModal] = useState(false); // Controla la visibilidad del modal de revisión
   // Estado para mostrar notificaciones flotantes (reemplaza a la función alert())
   const [notification, setNotification] = useState(null);
-
-  const navigate = useNavigate();
 
   console.log(
     "PREVIEW_ORDER: Renderizando. Items en orden:",
@@ -21,15 +17,21 @@ const PreviewOrder = ({ activeOrder }) => {
   // Cantidad total de platos en la orden
   const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
 
+  console.log("TOTAL_ITEMS: ", totalItems);
+
   // Cálculo del subtotal: sumamos (precio * cantidad) de cada item.
   const subtotal = activeOrder
     .reduce(
-      (sum, i) =>
-        // Utilizamos i.precio (asumiendo que viene de la API) para el cálculo.
-        sum + (typeof i.precio === "number" ? i.precio : 0) * (i.quantity || 0),
-      0
+      (sum, i) => {
+        const itemPrice = parseFloat(i.precio) || 0;
+
+        return sum + itemPrice * (i.quantity || 0);
+      },
+      0 
     )
     .toFixed(2); // Formatea a dos decimales
+
+    console.log(subtotal);
 
   // Función unificada para mostrar mensajes de notificación
   const showNotification = (type, message) => {
@@ -66,7 +68,7 @@ const PreviewOrder = ({ activeOrder }) => {
       timestamp: new Date().toLocaleTimeString(),
     };
     console.log("CONFIRM: Objeto de orden a guardar:", newOrder);
-    navigate("/orders");
+    
     try {
       const storageKey = "kitchen_kanban";
       const saved = sessionStorage.getItem(storageKey);
@@ -238,4 +240,4 @@ const PreviewOrder = ({ activeOrder }) => {
   );
 };
 
-export default PreviewOrder;
+export default React.memo(PreviewOrder);

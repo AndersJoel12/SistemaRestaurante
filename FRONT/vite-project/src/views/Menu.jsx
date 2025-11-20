@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import MenuItem from "../components/MenuItem.jsx";
-import PreviewOrder from "../components/PreviewOrder.jsx";
 import axios from "axios";
+
+import MenuItem from "../components/menu/MenuItem.jsx";
+import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
+import PreviewOrder from "../components/menu/PreviewOrder.jsx";
+
 import Header from "../components/Header.jsx";
 
 const URL_CATEGORY = "http://localhost:8000/api/categorias";
@@ -44,23 +47,25 @@ const Menu = () => {
       ]);
       setDishes(dishResponse.data);
       
-      if (catResponse.data.length > 0 && activeCategory === "all") {
-        setActiveCategory(catResponse.data[0].id);
-      }
+      
     } catch (error) {
+
       let errorMessage = "Ocurrió un error al obtener los datos del menú.";
+
       if (error.request && !error.response) {
         errorMessage = "Error de red: No se pudo alcanzar el servidor.";
       } else if (error.response) {
         errorMessage = `Error ${error.response.status}: Problema de servidor o permisos.`;
       }
+
       setApiError(errorMessage);
       setCategory([]);
       setDishes([]);
+
     } finally {
       setLoading(false);
     }
-  }, [activeCategory]);
+  }, []);
 
   useEffect(() => {
     fetchMenuData();
@@ -147,39 +152,14 @@ const Menu = () => {
           📌 Pedido para Mesa {mesaActiva.number} ({mesaActiva.capacity} sillas)
         </div>
       )}
-
-      <nav className="sticky top-0 bg-red-700 p-4 shadow-lg z-20">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 sm:space-x-4">
-          <div className="flex-1 w-full sm:w-auto">
-            <input
-              type="text"
-              placeholder="Buscar plato por nombre..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full p-2 bg-white border border-red-500 rounded-lg focus:ring-yellow-400 focus:border-yellow-400 transition duration-150 text-gray-800"
-            />
-          </div>
-
-          <div className="w-full sm:w-48">
-            <select
-              value={String(activeCategory)}
-              onChange={(e) => {
-                const value = e.target.value;
-                const newCategory = value === "all" ? value : Number(value);
-                setActiveCategory(newCategory);
-                setSearchTerm("");
-              }}
-              className="w-full p-2 border border-red-500 rounded-lg bg-white text-gray-800 appearance-none cursor-pointer"
-            >
-              {category.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </nav>
+  
+      <MenuFilterBar
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        activeCategory={activeCategory}
+        setActiveCategory={setActiveCategory}
+        category={category}
+      />
 
       <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
         {loading ? (
