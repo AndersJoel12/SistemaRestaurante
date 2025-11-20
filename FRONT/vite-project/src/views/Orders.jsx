@@ -101,7 +101,9 @@ const Orders = () => {
           ))}
         </div>
       </div>
-
+      <div>
+        <p>nya</p>
+      </div>
       {/* 🔽 Footer con botón INICIO */}
       <div className="p-4 bg-red-200 shadow-inner">
         <button
