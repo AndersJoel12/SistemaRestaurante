@@ -5,9 +5,9 @@ from apps.facturacion.models import Factura
 from apps.pedidos.models import Pedido
 
 class FacturaSerializer(serializers.ModelSerializer):
-    # Input: Recibimos el ID del pedido (Ej: 5)
+    # Input: Recibimos el ID del pedido desde el Frontend
     pedido_id = serializers.PrimaryKeyRelatedField(
-        source='pedido', # Esto hace que en validated_data la llave sea 'pedido'
+        source='pedido', 
         queryset=Pedido.objects.all(),
         write_only=True
     )
@@ -17,61 +17,65 @@ class FacturaSerializer(serializers.ModelSerializer):
         fields = (
             'id', 
             'pedido_id', 
+            'numero_factura', 
             'fecha_emision', 
             'hora_emision', 
-            'impuesto',    # Asumo que esto es el % (Ej: 16.00)
+            'impuesto', 
             'descuento', 
             'metodo_pago', 
             'subtotal', 
             'totalFactura', 
-            'state', 
-            'created_at'
+            # Campos del Cliente
+            'cliente_nombre',
+            'cliente_cedula',
+            'cliente_direccion',
+            'cliente_telefono',
+            'referencia_pago',
         )
         read_only_fields = (
-            'id', 'fecha_emision', 'hora_emision', 'subtotal', 'totalFactura', 'state', 'created_at'
+            'id', 'numero_factura', 'fecha_emision', 'hora_emision', 'subtotal', 'totalFactura'
         )
 
     def create(self, validated_data):
-        # 1. CORRECCIÓN CRÍTICA: 
-        # Al usar source='pedido', DRF ya nos da el OBJETO Pedido en la llave 'pedido'.
-        # No necesitamos buscarlo de nuevo con Pedido.objects.get()
+        # Extraemos el objeto pedido
         pedido_instance = validated_data.pop('pedido')
 
         with transaction.atomic():
-            # Validamos si ya tiene factura (usando la relación inversa del OneToOne)
+            # 1. Validar si ya existe factura
             if hasattr(pedido_instance, 'factura'):
                 raise serializers.ValidationError("Este pedido ya tiene una factura asociada.")
             
-            # 2. Cálculos Matemáticos
-            subtotal = pedido_instance.costo_total
+            # 2. Obtener el Subtotal (Usando CostoTotal del modelo Pedido)
+            subtotal = pedido_instance.CostoTotal 
             
-            # Obtenemos el porcentaje de impuesto (Ej: 16). Si no viene, es 0.
+            # 3. Cálculos Matemáticos
             porcentaje_impuesto = validated_data.get('impuesto', Decimal(0))
-            
-            # Calculamos el monto del impuesto: (Subtotal * Porcentaje) / 100
             monto_impuesto_calculado = subtotal * (porcentaje_impuesto / Decimal(100))
-            
             descuento = validated_data.get('descuento', Decimal(0))
             
-            # Total = Subtotal + Impuesto ($) - Descuento
-            # Nota: Asegúrate de que tu modelo Factura guarde el % de impuesto o el monto.
-            # Aquí asumo que guardas el % en 'impuesto' y el total incluye el cálculo.
+            # Total Final
             totalFactura = subtotal + monto_impuesto_calculado - descuento
 
-            # 3. Creación de la Factura
+            # 4. Creación de la Factura
             factura = Factura.objects.create(
                 pedido=pedido_instance,
                 subtotal=subtotal,
                 totalFactura=totalFactura,
-                **validated_data # Aquí van metodo_pago, impuesto (%), descuento, etc.
+                **validated_data 
             )
 
-            # 4. Lógica de Negocio (Cerrar Pedido y Mesa)
+            # 5. Actualizar Estado del Pedido
             pedido_instance.estado_pedido = 'CERRADO'
             pedido_instance.save()
             
-            # Verificamos que la mesa exista antes de intentar liberarla (por seguridad)
+            # 6. 🔥 LIBERAR MESA (Lógica Conectada al Modelo) 🔥
+            # Verificamos si el pedido tiene una mesa asignada
             if pedido_instance.mesa:
+                # Llamamos al método liberar() que creamos en el modelo Mesa
+                # Esto pone estado = False y guarda la mesa.
                 pedido_instance.mesa.liberar()
-                
+                print(f"✅ Mesa {pedido_instance.mesa.numero} liberada automáticamente.")
+            else:
+                print("ℹ️ Este pedido no tenía mesa asignada (quizás es para llevar).")
+
         return factura

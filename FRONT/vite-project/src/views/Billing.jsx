@@ -7,7 +7,7 @@ import InputField from "../components/InputField.jsx";
 const API_URL = 'http://localhost:8000/api/facturas'; 
 const API_PEDIDOS = 'http://localhost:8000/api/pedidos'; 
 
-// Usamos Emojis en lugar de iconos para no depender de librerías externas
+// Emojis para métodos de pago
 const METODOS_PAGO = [
     { id: "EFECTIVO", label: "Efectivo", icon: "💵" },
     { id: "TARJETA", label: "Tarjeta (Punto)", icon: "💳" },
@@ -16,123 +16,146 @@ const METODOS_PAGO = [
 ];
 
 const GenerarFactura = () => {
+  // --- ESTADOS UI ---
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [success, setSuccess] = useState(false);
   
-  // Estado para la lista de pedidos disponibles
+  // --- ESTADOS DE DATOS ---
   const [listaPedidos, setListaPedidos] = useState([]);
 
-  // --- ESTADO DEL FORMULARIO ---
-  const [pedidoId, setPedidoId] = useState(""); 
-  const [montoVisual, setMontoVisual] = useState(0); 
-  const [impuesto, setImpuesto] = useState(0); 
-  const [descuento, setDescuento] = useState(0); 
-  const [metodoPago, setMetodoPago] = useState("EFECTIVO");
-  const [referencia, setReferencia] = useState(""); 
-  
-  // Lógica de Facturación Opcional
-  const [requiereFactura, setRequiereFactura] = useState(false);
-  const [datosCliente, setDatosCliente] = useState({
-      cedula: "",
-      nombre: "",
-      direccion: "",
-      telefono: ""
+  // Estado unificado del formulario de pago
+  const [formPago, setFormPago] = useState({
+      pedidoId: "",
+      montoVisual: 0, // CostoTotal del pedido
+      impuesto: 0,
+      descuento: 0,
+      metodoPago: "EFECTIVO",
+      referencia: ""
   });
 
-  // --- EFECTO: CARGAR PEDIDOS AL INICIAR ---
+  // Estado para datos del cliente
+  const [requiereFactura, setRequiereFactura] = useState(false);
+  const [datosCliente, setDatosCliente] = useState({
+      cedula: "", nombre: "", direccion: "", telefono: ""
+  });
+
+  // --- EFECTO: CARGAR PEDIDOS ---
   useEffect(() => {
       const cargarPedidos = async () => {
           try {
               const response = await axios.get(`${API_PEDIDOS}/`);
-              console.log("📦 Pedidos encontrados:", response.data);
               if (Array.isArray(response.data)) {
                   setListaPedidos(response.data);
               }
           } catch (error) {
-              console.error("Error cargando pedidos:", error);
+              console.error("Error al cargar pedidos:", error);
+              setMessage({ type: "error", text: "Error de conexión al cargar pedidos." });
           }
       };
       cargarPedidos();
   }, []);
 
   // --- HANDLERS ---
+
+  // 1. Al seleccionar pedido, buscamos el monto (CostoTotal) automáticamente
+  const handleSeleccionarPedido = (e) => {
+      const idSeleccionado = e.target.value;
+      const pedidoEncontrado = listaPedidos.find(p => p.id.toString() === idSeleccionado);
+      
+      // Usamos 'CostoTotal' (nombre exacto del backend)
+      const monto = pedidoEncontrado ? pedidoEncontrado.CostoTotal : 0;
+
+      setFormPago({
+          ...formPago,
+          pedidoId: idSeleccionado,
+          montoVisual: monto 
+      });
+  };
+
+  // 2. Manejo genérico de inputs del pago
+  const handleFormChange = (e) => {
+      setFormPago({ ...formPago, [e.target.name]: e.target.value });
+  };
+
+  // 3. Manejo de inputs del cliente
   const handleClienteChange = (e) => {
       setDatosCliente({ ...datosCliente, [e.target.name]: e.target.value });
   };
 
+  // 4. Enviar al Backend
   const handleProcesarPago = async () => {
       setLoading(true);
       setMessage(null);
 
-      // 1. Validaciones Básicas
-      if (!pedidoId) {
+      // Validaciones
+      if (!formPago.pedidoId) {
           setMessage({ type: "error", text: "Debes seleccionar un Pedido para facturar." });
           setLoading(false);
           return;
       }
-      if (metodoPago !== "EFECTIVO" && !referencia.trim()) {
+      if (formPago.metodoPago !== "EFECTIVO" && !formPago.referencia.trim()) {
           setMessage({ type: "error", text: "Ingrese la referencia para pagos electrónicos." });
           setLoading(false);
           return;
       }
-
-      // 2. Validaciones de Cliente
       if (requiereFactura) {
           if (!datosCliente.cedula.trim() || !datosCliente.nombre.trim()) {
-              setMessage({ type: "error", text: "Cédula y Nombre son obligatorios para facturar." });
+              setMessage({ type: "error", text: "Cédula y Nombre son obligatorios." });
               setLoading(false);
               return;
           }
       }
 
-      // 3. Preparar Payload
+      // Payload para Django (snake_case)
       const payload = {
-          pedido_id: parseInt(pedidoId, 10),
-          metodo_pago: metodoPago,
-          impuesto: parseFloat(impuesto) || 0,
-          descuento: parseFloat(descuento) || 0,
-          referencia_pago: referencia, 
+          pedido_id: parseInt(formPago.pedidoId, 10),
+          metodo_pago: formPago.metodoPago,
+          impuesto: parseFloat(formPago.impuesto) || 0,
+          descuento: parseFloat(formPago.descuento) || 0,
+          referencia_pago: formPago.referencia, 
           cliente_nombre: requiereFactura ? datosCliente.nombre : "Consumidor Final",
           cliente_cedula: requiereFactura ? datosCliente.cedula : "0",
           cliente_direccion: requiereFactura ? datosCliente.direccion : "",
           cliente_telefono: requiereFactura ? datosCliente.telefono : ""
       };
 
-      console.log("🚀 Enviando Factura:", payload);
-
       try {
-          const response = await axios.post(`${API_URL}/`, payload);
-          console.log("✅ Factura Creada:", response.data);
-          setSuccess(true);
-          setMessage({ type: "success", text: "¡Factura generada exitosamente!" });
+          await axios.post(`${API_URL}/`, payload);
           
-          // Reset
+          setSuccess(true);
+          setMessage({ type: "success", text: "¡Factura generada y Mesa liberada!" });
+
+          // --- 🔥 LÓGICA VISUAL: ELIMINAR PEDIDO PROCESADO ---
+          // Esto hace que desaparezca del select inmediatamente
+          setListaPedidos(prevPedidos => 
+             prevPedidos.filter(p => p.id !== parseInt(formPago.pedidoId))
+          );
+          
+          // Reset automático del formulario
           setTimeout(() => {
               setSuccess(false);
-              setPedidoId("");
-              setMontoVisual(0);
-              setImpuesto(0);
-              setDescuento(0);
-              setReferencia("");
+              setFormPago({
+                  pedidoId: "", montoVisual: 0, impuesto: 0, descuento: 0, metodoPago: "EFECTIVO", referencia: ""
+              });
               setRequiereFactura(false);
               setDatosCliente({ cedula: "", nombre: "", direccion: "", telefono: "" });
               setMessage(null);
           }, 3000);
 
       } catch (error) {
-          console.error("🔴 Error:", error);
+          console.error("Error al procesar pago:", error);
           if (error.response?.data) {
-             const errData = error.response.data;
-             // Si es HTML (error 500), evitamos parsearlo
-             if (typeof errData === 'string' && errData.startsWith('<')) {
-                 setMessage({ type: "error", text: "Error interno del servidor (500). Verifica que el Pedido exista." });
-             } else {
-                 const firstKey = Object.keys(errData)[0];
-                 setMessage({ type: "error", text: `Error en ${firstKey}: ${errData[firstKey]}` });
-             }
+               const errData = error.response.data;
+               if (typeof errData === 'object') {
+                   const firstKey = Object.keys(errData)[0];
+                   const msg = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
+                   setMessage({ type: "error", text: `Error en ${firstKey}: ${msg}` });
+               } else {
+                   setMessage({ type: "error", text: "Error en el servidor." });
+               }
           } else {
-             setMessage({ type: "error", text: "Error de conexión." });
+              setMessage({ type: "error", text: "Error de conexión." });
           }
       } finally {
           setLoading(false);
@@ -143,11 +166,9 @@ const GenerarFactura = () => {
   if (success) {
       return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 animate-fade-in-down">
-              <div className="bg-green-100 p-6 rounded-full mb-4 text-4xl">
-                  ✅
-              </div>
+              <div className="bg-green-100 p-6 rounded-full mb-4 text-4xl">✅</div>
               <h2 className="text-3xl font-bold text-gray-800 mb-2">¡Factura Generada!</h2>
-              <p className="text-gray-600 mb-6 text-lg">El pedido #{pedidoId} ha sido procesado correctamente.</p>
+              <p className="text-gray-600 mb-6 text-lg">El pedido ha sido cerrado y la mesa liberada.</p>
               <button 
                   onClick={() => setSuccess(false)}
                   className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition"
@@ -180,25 +201,25 @@ const GenerarFactura = () => {
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl">🛍️</span>
                         <select 
-                            value={pedidoId}
-                            onChange={(e) => setPedidoId(e.target.value)}
+                            name="pedidoId"
+                            value={formPago.pedidoId}
+                            onChange={handleSeleccionarPedido}
                             className="w-full pl-12 pr-4 py-3 text-lg font-bold text-gray-800 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white appearance-none cursor-pointer"
                         >
                             <option value="">-- Seleccione un Pedido --</option>
                             {listaPedidos.map((p) => (
                                 <option key={p.id} value={p.id}>
-                                    Pedido #{p.id} {p.mesa ? `- Mesa ${p.mesa}` : ''} {p.estado ? `(${p.estado})` : ''}
+                                    Pedido #{p.id} {p.mesa_id ? `- Mesa ${p.mesa_id}` : ''} - ${p.CostoTotal}
                                 </option>
                             ))}
                         </select>
-                        {/* Flecha personalizada para el select */}
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
                             <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
                         </div>
                     </div>
                     {listaPedidos.length === 0 && (
                         <p className="text-xs text-red-500 mt-1 font-medium">
-                            ⚠️ No se encontraron pedidos registrados. Crea un pedido primero.
+                            ⚠️ No hay pedidos pendientes de pago.
                         </p>
                     )}
                 </div>
@@ -208,8 +229,9 @@ const GenerarFactura = () => {
                         <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Impuesto ($)</label>
                         <input 
                             type="number" 
-                            value={impuesto}
-                            onChange={(e) => setImpuesto(e.target.value)}
+                            name="impuesto"
+                            value={formPago.impuesto}
+                            onChange={handleFormChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
                             placeholder="0.00"
                         />
@@ -218,27 +240,30 @@ const GenerarFactura = () => {
                         <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Descuento ($)</label>
                         <input 
                             type="number" 
-                            value={descuento}
-                            onChange={(e) => setDescuento(e.target.value)}
+                            name="descuento"
+                            value={formPago.descuento}
+                            onChange={handleFormChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 text-green-600 font-semibold"
                             placeholder="0.00"
                         />
                     </div>
                 </div>
                 
+                {/* MONTO AUTOMÁTICO */}
                 <div className="mb-6">
-                    <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Monto Visual ($)</label>
+                    <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Monto Total a Pagar ($)</label>
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">$</span>
                         <input 
                             type="number" 
-                            value={montoVisual}
-                            onChange={(e) => setMontoVisual(e.target.value)}
-                            className="w-full pl-10 pr-4 py-4 text-4xl font-extrabold text-gray-800 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 transition-colors"
+                            readOnly
+                            // Cálculo: CostoTotal (API) + Impuesto - Descuento
+                            value={(parseFloat(formPago.montoVisual || 0) + parseFloat(formPago.impuesto || 0) - parseFloat(formPago.descuento || 0)).toFixed(2)}
+                            className="w-full pl-10 pr-4 py-4 text-4xl font-extrabold text-gray-800 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 transition-colors bg-gray-50"
                             placeholder="0.00"
                         />
                     </div>
-                    <p className="text-xs text-orange-500 mt-1 font-medium">* El monto final se calcula en base al pedido seleccionado.</p>
+                    <p className="text-xs text-orange-500 mt-1 font-medium">* El monto se calcula automáticamente.</p>
                 </div>
 
                 <div className="mb-6">
@@ -247,9 +272,9 @@ const GenerarFactura = () => {
                         {METODOS_PAGO.map((metodo) => (
                             <button
                                 key={metodo.id}
-                                onClick={() => setMetodoPago(metodo.id)}
+                                onClick={() => setFormPago({...formPago, metodoPago: metodo.id})}
                                 className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 ${
-                                    metodoPago === metodo.id 
+                                    formPago.metodoPago === metodo.id 
                                     ? "border-red-600 bg-red-50 text-red-700 shadow-md scale-105" 
                                     : "border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
                                 }`}
@@ -261,12 +286,13 @@ const GenerarFactura = () => {
                     </div>
                 </div>
 
-                {metodoPago !== "EFECTIVO" && (
+                {formPago.metodoPago !== "EFECTIVO" && (
                     <div className="animate-fade-in-up">
                         <InputField 
-                            label={`Referencia / Recibo (${metodoPago})`}
-                            value={referencia}
-                            onChange={(e) => setReferencia(e.target.value)}
+                            label={`Referencia / Recibo (${formPago.metodoPago})`}
+                            name="referencia"
+                            value={formPago.referencia}
+                            onChange={handleFormChange}
                             placeholder="Ej: 123456..."
                         />
                     </div>
@@ -312,10 +338,8 @@ const GenerarFactura = () => {
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Cédula / RIF *</label>
                             <input 
-                                type="text" 
-                                name="cedula"
-                                value={datosCliente.cedula}
-                                onChange={handleClienteChange}
+                                type="text" name="cedula"
+                                value={datosCliente.cedula} onChange={handleClienteChange}
                                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="V-12345678"
                             />
@@ -323,10 +347,8 @@ const GenerarFactura = () => {
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Nombre / Razón Social *</label>
                             <input 
-                                type="text" 
-                                name="nombre"
-                                value={datosCliente.nombre}
-                                onChange={handleClienteChange}
+                                type="text" name="nombre"
+                                value={datosCliente.nombre} onChange={handleClienteChange}
                                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="Nombre Completo"
                             />
@@ -335,8 +357,7 @@ const GenerarFactura = () => {
                             <label className="block text-xs font-bold text-gray-500 mb-1">Dirección Fiscal</label>
                             <textarea 
                                 name="direccion"
-                                value={datosCliente.direccion}
-                                onChange={handleClienteChange}
+                                value={datosCliente.direccion} onChange={handleClienteChange}
                                 rows="2"
                                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                                 placeholder="Dirección..."
@@ -345,10 +366,8 @@ const GenerarFactura = () => {
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Teléfono</label>
                             <input 
-                                type="tel" 
-                                name="telefono"
-                                value={datosCliente.telefono}
-                                onChange={handleClienteChange}
+                                type="tel" name="telefono"
+                                value={datosCliente.telefono} onChange={handleClienteChange}
                                 className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="0414-..."
                             />
@@ -359,9 +378,9 @@ const GenerarFactura = () => {
                 <div className="mt-8 border-t pt-6">
                     <button 
                         onClick={handleProcesarPago}
-                        disabled={loading || !pedidoId}
+                        disabled={loading || !formPago.pedidoId}
                         className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95 flex justify-center items-center gap-2
-                            ${loading || !pedidoId
+                            ${loading || !formPago.pedidoId
                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
                                 : "bg-green-600 text-white hover:bg-green-700 hover:shadow-green-200"
                             }`}
