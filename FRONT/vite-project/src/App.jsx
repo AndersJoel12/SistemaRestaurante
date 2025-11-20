@@ -40,7 +40,7 @@ function App() {
             path="/tables"
             element={
               <ProtectedRoute
-                roles={["mesero", "mesonero", "administrador", "admin"]}
+                roles={["mesero", "Mesero", "Administrador", "administrador"]}
               >
                 <Tables />
               </ProtectedRoute>
@@ -50,7 +50,7 @@ function App() {
             path="/menu"
             element={
               <ProtectedRoute
-                roles={["mesero", "mesonero", "administrador", "admin"]}
+                roles={["Mesero", "mesero", "Administrador", "administrador"]}
               >
                 <Menu />
               </ProtectedRoute>
@@ -60,7 +60,7 @@ function App() {
             path="/orders"
             element={
               <ProtectedRoute
-                roles={["mesero", "mesonero", "administrador", "admin"]}
+                roles={["Mesero", "mesero", "Administrador", "administrador"]}
               >
                 <Orders />
               </ProtectedRoute>
@@ -71,7 +71,7 @@ function App() {
           <Route
             path="/kitchen"
             element={
-              <ProtectedRoute roles={["cocinero", "administrador", "admin"]}>
+              <ProtectedRoute roles={["Cocinero", "cocinero", "Ddministrador", "administrador"]}>
                 <Kitchen />
               </ProtectedRoute>
             }
@@ -81,7 +81,7 @@ function App() {
           <Route
             path="/manage-users"
             element={
-              <ProtectedRoute roles={["administrador", "admin"]}>
+              <ProtectedRoute roles={["Administrador", "administrador"]}>
                 <ManageUsers />
               </ProtectedRoute>
             }
@@ -89,7 +89,7 @@ function App() {
           <Route
             path="/manage-menu"
             element={
-              <ProtectedRoute roles={["administrador", "admin"]}>
+              <ProtectedRoute roles={["Administrador", "administrador"]}>
                 <ManageMenu />
               </ProtectedRoute>
             }
@@ -97,7 +97,7 @@ function App() {
           <Route
             path="/manage-category"
             element={
-              <ProtectedRoute roles={["administrador", "admin"]}>
+              <ProtectedRoute roles={["Administrador", "administrador"]}>
                 <ManageCategory />
               </ProtectedRoute>
             }
@@ -105,12 +105,12 @@ function App() {
           <Route
             path="/manage-table"
             element={
-              <ProtectedRoute roles={["administrador", "admin"]}>
+              <ProtectedRoute roles={["Administrador", "administrador"]}>
                 <ManageTable />
               </ProtectedRoute>
             }
           />
-
+          
           {/* Default */}
           <Route path="*" element={<Home />} />
         </Routes>

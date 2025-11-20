@@ -7,7 +7,7 @@ import NavBar from "../components/Navigation.jsx";
 // --- CONFIGURACIÓN ---
 const API_URL = 'http://localhost:8000/api/empleados'; 
 
-const ROL_OPTIONS = ["Administrador", "Cocinero", "mesero"];
+const ROL_OPTIONS = ["Administrador", "Cocinero", "Mesero"];
 
 const GestionUsuarios = () => {
   // --- ESTADOS ---
@@ -78,7 +78,7 @@ const GestionUsuarios = () => {
       setEditingItem({
         id: item.id,
         usuario: item.username || item.usuario || "", 
-        nombre: item.name || item.nombre || item.first_name || "",     
+        nombre: item.name || item.nombre || item.first_name || "",
         apellido: item.last_name || item.apellido || "", 
         cedula: item.cedula ? String(item.cedula) : "",
         email: item.email || "",
