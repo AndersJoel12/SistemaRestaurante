@@ -195,7 +195,7 @@ const Kitchen = () => {
             ))}
           </div>
         </div>
-
+        
       </div>
     </div>
   );
