@@ -34,16 +34,23 @@ const Menu = () => {
     }, 3000);
   }, []);
 
-  // --- VERIFICAR MESA ACTIVA (SIN REDIRECCIÓN FORZADA) ---
+  // --- 🔑 VERIFICAR Y CARGAR MESA ACTIVA (Solución Persistencia) ---
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
+    
     if (storedMesa) {
-      const mesa = JSON.parse(storedMesa);
-      setMesaActiva(mesa);
-      showNotification("info", `Mesa ${mesa.number} cargada.`);
+      try {
+        const mesa = JSON.parse(storedMesa);
+        setMesaActiva(mesa);
+        showNotification("info", `Mesa ${mesa.number} cargada.`);
+      } catch (e) {
+        console.error("Error al parsear los datos de la mesa activa:", e);
+        setMesaActiva(null);
+        showNotification("error", "Error al leer los datos de la mesa. Reinicia sesión de mesa.");
+      }
     } else {
       setMesaActiva(null);
-      showNotification("warning", "Modo menú: No hay mesa activa. No se podrá enviar la orden.");
+      showNotification("warning", "Modo menú: No hay mesa activa. Por favor, selecciona una mesa para enviar una orden.");
     }
   }, [showNotification]);
 
@@ -148,7 +155,7 @@ const Menu = () => {
       return;
     }
 
-    // 2. Validaciones (El bloqueo real)
+    // 2. Validaciones (El bloqueo crítico)
     if (totalItems === 0 || !mesaActiva?.id) {
       showNotification("warning", "La orden está vacía o no hay mesa.");
       return;
@@ -170,7 +177,7 @@ const Menu = () => {
 
     const payload = {
       mesa_id: mesaActiva.id,
-      empleado_id: empleadoId, // Corregido a minúscula para el Serializer de Django
+      empleado_id: empleadoId, 
       observacion: "", 
       estado_pedido: ESTADO_DEFAULT, 
       items: itemsPayload,
@@ -186,7 +193,6 @@ const Menu = () => {
       showNotification("success", `¡Orden a Mesa ${mesaActiva.number} enviada!`);
       setActiveOrder([]); 
       
-      // Añadimos el delay para ver la notificación antes de navegar
       setTimeout(() => {
           navigate("/orders"); 
       }, 1000);
@@ -195,7 +201,6 @@ const Menu = () => {
       console.error("Error enviando:", error.response || error);
       let errorMessage = "Error al enviar.";
       
-      // Lógica robusta para extraer el error 400 del Backend
       if (error.response?.data) {
          errorMessage = JSON.stringify(error.response.data);
       }
