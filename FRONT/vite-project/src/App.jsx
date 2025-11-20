@@ -94,6 +94,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/manage-category"
+            element={
+              <ProtectedRoute roles={["administrador", "admin"]}>
+                <ManageCategory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-table"
+            element={
+              <ProtectedRoute roles={["administrador", "admin"]}>
+                <ManageTable />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default */}
           <Route path="*" element={<Home />} />

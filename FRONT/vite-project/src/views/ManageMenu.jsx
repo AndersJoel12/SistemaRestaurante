@@ -4,19 +4,15 @@ import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
 import NavBar from "../components/Navigation.jsx";
 
-// --- CONFIGURACIÓN ---
-const API_URL = 'http://localhost:8000/api/productos'; 
-
-const CATEGORIES = [
-  { id: 1, name: "Entradas" },
-  { id: 2, name: "Sushi" },
-  { id: 3, name: "Bebidas" },
-  { id: 4, name: "Postre" },
-];
+// --- CONFIGURACIÓN DE APIS ---
+const API_PRODUCTOS = 'http://localhost:8000/api/productos'; 
+const API_CATEGORIAS = 'http://localhost:8000/api/categorias'; 
 
 const GestionMenu = () => {
+  // --- ESTADOS ---
   const [message, setMessage] = useState(null);
   const [platos, setPlatos] = useState([]); 
+  const [categorias, setCategorias] = useState([]); // Aquí guardamos las categorías de la BD
   const [editingItem, setEditingItem] = useState(null);
   const [imagenArchivo, setImagenArchivo] = useState(null);
 
@@ -24,31 +20,55 @@ const GestionMenu = () => {
   const [busqueda, setBusqueda] = useState(""); 
   const [filtroCategoria, setFiltroCategoria] = useState(""); 
 
-  // --- 1. CARGA DE DATOS ---
+  // --- 1. CARGA DE DATOS SIMULTÁNEA ---
   useEffect(() => {
-    const cargarPlatos = async () => {
+    const cargarDatos = async () => {
       try {
-        const response = await axios.get(`${API_URL}/`);
-        setPlatos(Array.isArray(response.data) ? response.data : []);
+        // Cargamos productos y categorías al mismo tiempo
+        const [resProductos, resCategorias] = await Promise.all([
+           axios.get(`${API_PRODUCTOS}/`),
+           axios.get(`${API_CATEGORIAS}/`)
+        ]);
+
+        setPlatos(Array.isArray(resProductos.data) ? resProductos.data : []);
+        setCategorias(Array.isArray(resCategorias.data) ? resCategorias.data : []);
+
       } catch (error) {
-        console.error("Error load:", error);
+        console.error("🔴 Error cargando datos:", error);
         setMessage({ type: "error", text: "No se pudo conectar con el servidor." });
       }
     };
-    cargarPlatos();
+    cargarDatos();
   }, []);
 
-  // --- 2. HELPER INDISPENSABLE ---
+  // --- 2. HELPERS PARA CATEGORÍAS (CRÍTICOS) ---
+
+  // Obtiene el ID limpio, sin importar si viene como objeto o numero
   const getCategoryId = (item) => {
     if (!item) return null;
-    const rawVal = item.categoria || item.categoria_id || item.category;
-    if (typeof rawVal === 'object' && rawVal !== null) return rawVal.id;
-    if (rawVal && !isNaN(rawVal)) return parseInt(rawVal, 10);
-    if (typeof rawVal === 'string') {
-        const catEncontrada = CATEGORIES.find(c => c.name.toLowerCase() === rawVal.toLowerCase());
-        return catEncontrada ? catEncontrada.id : null;
-    }
-    return null;
+    
+    // Intentamos leer la propiedad de varias formas comunes en Django/React
+    const val = item.categoria || item.categoria_id || item.category;
+
+    // Caso A: Es un objeto (ej: { id: 5, nombre: "Bebidas" })
+    if (val && typeof val === 'object') return val.id;
+    
+    // Caso B: Es un número o string numérico (ej: 5 o "5")
+    if (val !== null && val !== undefined) return parseInt(val, 10);
+
+    return null; 
+  };
+
+  // Obtiene el NOMBRE visible buscando en el array de categorías descargado
+  const getCategoryName = (item) => {
+      const catId = getCategoryId(item);
+      if (!catId) return "---";
+
+      // Comparamos como String para evitar errores de tipo (5 vs "5")
+      const found = categorias.find(c => String(c.id) === String(catId));
+      
+      // Retornamos el nombre si existe, si no, indicamos "Desconocido" (útil para debug)
+      return found ? (found.nombre || found.name) : "Desconocido";
   };
 
   // --- 3. FILTRADO INTELIGENTE ---
@@ -59,12 +79,13 @@ const GestionMenu = () => {
       const desc = (dish.descripcion || "").toLowerCase();
       
       const matchTexto = nombre.includes(texto) || desc.includes(texto);
+      
       const catId = getCategoryId(dish);
       const matchCategoria = filtroCategoria === "" || String(catId) === String(filtroCategoria);
 
       return matchTexto && matchCategoria;
     });
-  }, [platos, busqueda, filtroCategoria]);
+  }, [platos, busqueda, filtroCategoria, categorias]);
 
   // --- 4. HANDLERS ---
   const handleFormChange = (arg1, arg2) => {
@@ -89,8 +110,12 @@ const GestionMenu = () => {
     setMessage(null);
     setImagenArchivo(null);
 
+    // Si no hay categorías cargadas, usamos string vacío
+    const defaultCatId = categorias.length > 0 ? categorias[0].id : "";
+
     if (item) {
       const catId = getCategoryId(item);
+      // Normalizamos disponibilidad
       const isAvail = item.available ?? item.disponible ?? item.is_available ?? true;
       
       setEditingItem({
@@ -98,23 +123,28 @@ const GestionMenu = () => {
         name: item.nombre || item.name || "", 
         descripcion: item.descripcion || "",
         price: item.precio || item.price || 0,
-        category: String(catId || CATEGORIES[0].id), 
+        category: String(catId || defaultCatId), 
         available: isAvail ? "true" : "false",
         imagen: item.imagen
       });
     } else {
       setEditingItem({
         id: null, name: "", descripcion: "", price: 0, imagen: null,
-        category: String(CATEGORIES[0].id), 
+        category: String(defaultCatId), 
         available: "true", 
       });
     }
   };
 
   const handleSave = async () => {
+    // Validaciones simples
     if (!editingItem.name.trim()) {
       setMessage({ type: "error", text: "El nombre es obligatorio." });
       return;
+    }
+    if (!editingItem.category) {
+        setMessage({ type: "error", text: "Selecciona una categoría válida." });
+        return;
     }
 
     const formData = new FormData();
@@ -123,9 +153,9 @@ const GestionMenu = () => {
     formData.append('precio', editingItem.price); 
     formData.append('categoria_id', parseInt(editingItem.category, 10)); 
     
+    // Convertimos booleano string a string Python compatible si es necesario, o booleano puro
     const valPython = editingItem.available === "true" ? "True" : "False";
-    formData.append('available', valPython);
-    formData.append('disponible', valPython);
+    formData.append('disponible', valPython); 
     
     if (imagenArchivo) {
       formData.append('imagen', imagenArchivo);
@@ -136,11 +166,11 @@ const GestionMenu = () => {
       let response;
 
       if (editingItem.id) {
-        response = await axios.patch(`${API_URL}/${editingItem.id}/`, formData, { headers });
+        response = await axios.patch(`${API_PRODUCTOS}/${editingItem.id}/`, formData, { headers });
         setPlatos(prev => prev.map(p => p.id === response.data.id ? response.data : p));
         setMessage({ type: "success", text: "Plato actualizado." });
       } else {
-        response = await axios.post(`${API_URL}/`, formData, { headers });
+        response = await axios.post(`${API_PRODUCTOS}/`, formData, { headers });
         setPlatos(prev => [...prev, response.data]);
         setMessage({ type: "success", text: "Plato creado." });
       }
@@ -148,7 +178,10 @@ const GestionMenu = () => {
     } catch (error) {
       console.error("Error save:", error);
       const errorData = error.response?.data;
-      const errorMsg = errorData ? JSON.stringify(errorData) : "Error de conexión.";
+      // Manejo de errores más legible
+      const errorMsg = errorData 
+        ? Object.entries(errorData).map(([k, v]) => `${k}: ${v}`).join(", ") 
+        : "Error de conexión o servidor.";
       setMessage({ type: "error", text: errorMsg });
     }
   };
@@ -156,7 +189,7 @@ const GestionMenu = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("¿Estás seguro de eliminar este plato?")) return;
     try {
-      await axios.delete(`${API_URL}/${id}/`);
+      await axios.delete(`${API_PRODUCTOS}/${id}/`);
       setPlatos(prev => prev.filter(p => p.id !== id));
       setMessage({ type: "warning", text: "Eliminado correctamente." });
     } catch (e) { 
@@ -164,11 +197,11 @@ const GestionMenu = () => {
     }
   };
 
-  // --- RENDERIZADO RESPONSIVE ---
+  // --- RENDERIZADO ---
   return (
-    <div className="bg-gray-100 min-h-screen font-sans pb-24"> {/* Padding bottom para el NavBar fijo */}
+    // 🔥 CORRECCIÓN NAVBAR: pb-40 da suficiente espacio al final para que el NavBar no tape nada
+    <div className="bg-gray-100 min-h-screen font-sans pb-40 relative">
       
-      {/* Wrapper Principal con padding adaptativo */}
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <MessageAlert msg={message} />
         
@@ -179,7 +212,7 @@ const GestionMenu = () => {
           </h1>
         </div>
 
-        {/* CONTROLES (Stack en mobile, Row en Desktop) */}
+        {/* BARRA DE CONTROL */}
         <div className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-md sticky top-2 z-10">
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <input 
@@ -187,13 +220,18 @@ const GestionMenu = () => {
               value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
               className="border border-gray-300 rounded-lg px-4 py-3 w-full sm:w-64 focus:ring-2 focus:ring-red-500 outline-none transition-all"
             />
+            
+            {/* SELECT FILTRO DINÁMICO */}
             <select 
               value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} 
               className="border border-gray-300 rounded-lg px-4 py-3 w-full sm:w-auto bg-white focus:ring-2 focus:ring-red-500 outline-none cursor-pointer"
             >
-              <option value="">📂 Todas</option>
-              {CATEGORIES.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+              <option value="">📂 Todas las Categorías</option>
+              {categorias.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+              ))}
             </select>
+
           </div>
           <button 
             onClick={() => openModal(null)} 
@@ -203,14 +241,15 @@ const GestionMenu = () => {
           </button>
         </div>
 
-        {/* --- VISTA MÓVIL (CARDS) - Se oculta en MD --- */}
+        {/* --- VISTA MÓVIL (CARDS) --- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
           {platosFiltrados.length === 0 ? (
-             <div className="text-center p-8 bg-white rounded-xl text-gray-500 col-span-full">No se encontraron resultados.</div>
+             <div className="text-center p-8 bg-white rounded-xl text-gray-500 col-span-full">
+               {categorias.length === 0 ? "Cargando datos..." : "No se encontraron productos."}
+             </div>
           ) : (
             platosFiltrados.map((dish) => {
-              const catId = getCategoryId(dish);
-              const catName = CATEGORIES.find(c => c.id == catId)?.name || "---";
+              const catName = getCategoryName(dish); 
               const isAvailable = dish.available ?? dish.disponible ?? dish.is_available ?? true;
 
               return (
@@ -224,7 +263,9 @@ const GestionMenu = () => {
                   </div>
                   
                   <div className="flex justify-between items-center text-sm border-t pt-2 mt-1">
-                    <span className="font-semibold text-gray-600">{catName}</span>
+                    <span className="font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                        {catName}
+                    </span>
                     <span className="font-extrabold text-xl text-red-700">${parseFloat(dish.precio || dish.price || 0).toFixed(2)}</span>
                   </div>
 
@@ -235,12 +276,8 @@ const GestionMenu = () => {
                       {isAvailable ? "Disponible" : "Agotado"}
                     </span>
                     <div className="flex gap-2">
-                      <button onClick={() => openModal(dish)} className="p-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
-                        ✏️
-                      </button>
-                      <button onClick={() => handleDelete(dish.id)} className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100">
-                        🗑️
-                      </button>
+                      <button onClick={() => openModal(dish)} className="p-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">✏️</button>
+                      <button onClick={() => handleDelete(dish.id)} className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100">🗑️</button>
                     </div>
                   </div>
                 </div>
@@ -249,7 +286,7 @@ const GestionMenu = () => {
           )}
         </div>
 
-        {/* --- VISTA DE ESCRITORIO (TABLE) - Se oculta en Móvil --- */}
+        {/* --- VISTA DE ESCRITORIO (TABLE) --- */}
         <div className="hidden md:block overflow-hidden bg-white rounded-xl shadow-md border border-gray-100">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -264,11 +301,12 @@ const GestionMenu = () => {
             </thead>
             <tbody className="text-gray-700 text-sm divide-y divide-gray-200">
               {platosFiltrados.length === 0 ? (
-                <tr><td colSpan="6" className="text-center py-8 text-gray-500">No se encontraron resultados.</td></tr>
+                <tr><td colSpan="6" className="text-center py-8 text-gray-500">
+                    {categorias.length === 0 ? "Cargando..." : "No se encontraron resultados."}
+                </td></tr>
               ) : (
                 platosFiltrados.map((dish) => {
-                  const catId = getCategoryId(dish);
-                  const catName = CATEGORIES.find(c => c.id == catId)?.name || "---";
+                  const catName = getCategoryName(dish);
                   const isAvailable = dish.available ?? dish.disponible ?? dish.is_available ?? true;
 
                   return (
@@ -281,7 +319,7 @@ const GestionMenu = () => {
                         <div className="text-xs text-gray-500 max-w-xs truncate">{dish.descripcion}</div>
                       </td>
                       <td className="py-3 px-6 text-left">
-                        <span className="bg-gray-100 text-gray-600 py-1 px-3 rounded-full text-xs font-bold">
+                        <span className="bg-gray-100 text-gray-600 py-1 px-3 rounded-full text-xs font-bold border border-gray-200">
                           {catName}
                         </span>
                       </td>
@@ -290,9 +328,7 @@ const GestionMenu = () => {
                       </td>
                       <td className="py-3 px-6 text-center">
                           <span className={`py-1 px-3 rounded-full text-xs font-bold ${
-                            isAvailable 
-                            ? "bg-green-100 text-green-700 border border-green-200" 
-                            : "bg-red-100 text-red-700 border border-red-200"
+                            isAvailable ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"
                           }`}>
                             {isAvailable ? "DISPONIBLE" : "AGOTADO"}
                           </span>
@@ -313,11 +349,7 @@ const GestionMenu = () => {
       {/* MODAL RESPONSIVE */}
       {editingItem && (
         <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50 p-4" onClick={() => setEditingItem(null)}>
-          {/* max-w-lg y w-full aseguran que se vea bien en movil y no crezca infinito en pc */}
-          <div 
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-100" 
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-100" onClick={e => e.stopPropagation()}>
             <div className="bg-red-800 p-4 text-white flex justify-between items-center">
               <h2 className="text-xl font-bold">{editingItem.id ? "Editar Plato" : "Crear Nuevo Plato"}</h2>
               <button onClick={() => setEditingItem(null)} className="text-white hover:text-gray-300 text-2xl leading-none">&times;</button>
@@ -330,10 +362,7 @@ const GestionMenu = () => {
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Descripción</label>
                     <textarea 
-                        name="descripcion" 
-                        value={editingItem.descripcion} 
-                        onChange={handleFormChange}
-                        rows="3"
+                        name="descripcion" value={editingItem.descripcion} onChange={handleFormChange} rows="3"
                         className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 outline-none resize-none"
                         placeholder="Ingredientes y detalles..."
                     ></textarea>
@@ -342,8 +371,17 @@ const GestionMenu = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">Categoría</label>
-                        <select name="category" value={editingItem.category} onChange={handleFormChange} className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none">
-                            {CATEGORIES.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                        {/* SELECT MODAL DINÁMICO */}
+                        <select 
+                            name="category" 
+                            value={editingItem.category} 
+                            onChange={handleFormChange} 
+                            className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                        >
+                            {categorias.length === 0 && <option value="">Cargando...</option>}
+                            {categorias.map(c => (
+                                <option key={c.id} value={String(c.id)}>{c.nombre}</option>
+                            ))}
                         </select>
                     </div>
                     <InputField label="Precio ($)" name="price" type="number" value={editingItem.price} onChange={handleFormChange} />
