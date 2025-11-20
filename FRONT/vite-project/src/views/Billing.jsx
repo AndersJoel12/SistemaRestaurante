@@ -1,23 +1,27 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from 'axios';
 import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
 
 // --- CONFIGURACIÓN ---
-const API_URL = 'http://localhost:8000/api/facturacion'; 
+const API_URL = 'http://localhost:8000/api/facturas'; 
+const API_PEDIDOS = 'http://localhost:8000/api/pedidos'; 
 
-// Versión sin librerías (Usando Emojis para evitar errores de importación)
+// Usamos Emojis en lugar de iconos para no depender de librerías externas
 const METODOS_PAGO = [
     { id: "EFECTIVO", label: "Efectivo", icon: "💵" },
     { id: "TARJETA", label: "Tarjeta (Punto)", icon: "💳" },
     { id: "PAGO_MOVIL", label: "Pago Móvil", icon: "📱" },
-    { id: "ZELLE", label: "Zelle", icon: "↔️" },
+    { id: "ZELLE", label: "Zelle", icon: "🔄" },
 ];
 
 const GenerarFactura = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [success, setSuccess] = useState(false);
+  
+  // Estado para la lista de pedidos disponibles
+  const [listaPedidos, setListaPedidos] = useState([]);
 
   // --- ESTADO DEL FORMULARIO ---
   const [pedidoId, setPedidoId] = useState(""); 
@@ -36,6 +40,22 @@ const GenerarFactura = () => {
       telefono: ""
   });
 
+  // --- EFECTO: CARGAR PEDIDOS AL INICIAR ---
+  useEffect(() => {
+      const cargarPedidos = async () => {
+          try {
+              const response = await axios.get(`${API_PEDIDOS}/`);
+              console.log("📦 Pedidos encontrados:", response.data);
+              if (Array.isArray(response.data)) {
+                  setListaPedidos(response.data);
+              }
+          } catch (error) {
+              console.error("Error cargando pedidos:", error);
+          }
+      };
+      cargarPedidos();
+  }, []);
+
   // --- HANDLERS ---
   const handleClienteChange = (e) => {
       setDatosCliente({ ...datosCliente, [e.target.name]: e.target.value });
@@ -47,7 +67,7 @@ const GenerarFactura = () => {
 
       // 1. Validaciones Básicas
       if (!pedidoId) {
-          setMessage({ type: "error", text: "El ID del Pedido es obligatorio." });
+          setMessage({ type: "error", text: "Debes seleccionar un Pedido para facturar." });
           setLoading(false);
           return;
       }
@@ -57,7 +77,7 @@ const GenerarFactura = () => {
           return;
       }
 
-      // 2. Validaciones de Cliente (Solo si está activo)
+      // 2. Validaciones de Cliente
       if (requiereFactura) {
           if (!datosCliente.cedula.trim() || !datosCliente.nombre.trim()) {
               setMessage({ type: "error", text: "Cédula y Nombre son obligatorios para facturar." });
@@ -104,10 +124,15 @@ const GenerarFactura = () => {
           console.error("🔴 Error:", error);
           if (error.response?.data) {
              const errData = error.response.data;
-             const firstKey = Object.keys(errData)[0];
-             setMessage({ type: "error", text: `Error en ${firstKey}: ${errData[firstKey]}` });
+             // Si es HTML (error 500), evitamos parsearlo
+             if (typeof errData === 'string' && errData.startsWith('<')) {
+                 setMessage({ type: "error", text: "Error interno del servidor (500). Verifica que el Pedido exista." });
+             } else {
+                 const firstKey = Object.keys(errData)[0];
+                 setMessage({ type: "error", text: `Error en ${firstKey}: ${errData[firstKey]}` });
+             }
           } else {
-             setMessage({ type: "error", text: "Error al generar la factura." });
+             setMessage({ type: "error", text: "Error de conexión." });
           }
       } finally {
           setLoading(false);
@@ -122,7 +147,7 @@ const GenerarFactura = () => {
                   ✅
               </div>
               <h2 className="text-3xl font-bold text-gray-800 mb-2">¡Factura Generada!</h2>
-              <p className="text-gray-600 mb-6 text-lg">El pedido #{pedidoId} ha sido procesado.</p>
+              <p className="text-gray-600 mb-6 text-lg">El pedido #{pedidoId} ha sido procesado correctamente.</p>
               <button 
                   onClick={() => setSuccess(false)}
                   className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition"
@@ -147,22 +172,35 @@ const GenerarFactura = () => {
                     💰 Datos de la Operación
                 </h2>
                 
-                {/* ID DEL PEDIDO */}
+                {/* SELECCIÓN DE PEDIDO */}
                 <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
                     <label className="block text-sm font-bold text-gray-500 uppercase mb-2">
-                        ID del Pedido *
+                        Seleccionar Pedido *
                     </label>
                     <div className="relative">
-                        <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 font-bold">#</span>
-                        <input 
-                            type="number" 
+                        <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl">🛍️</span>
+                        <select 
                             value={pedidoId}
                             onChange={(e) => setPedidoId(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 text-lg font-bold text-gray-800 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
-                            placeholder="Ingrese N° de Pedido"
-                        />
+                            className="w-full pl-12 pr-4 py-3 text-lg font-bold text-gray-800 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white appearance-none cursor-pointer"
+                        >
+                            <option value="">-- Seleccione un Pedido --</option>
+                            {listaPedidos.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    Pedido #{p.id} {p.mesa ? `- Mesa ${p.mesa}` : ''} {p.estado ? `(${p.estado})` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        {/* Flecha personalizada para el select */}
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+                        </div>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Este ID vinculará la factura a los productos consumidos.</p>
+                    {listaPedidos.length === 0 && (
+                        <p className="text-xs text-red-500 mt-1 font-medium">
+                            ⚠️ No se encontraron pedidos registrados. Crea un pedido primero.
+                        </p>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
@@ -200,6 +238,7 @@ const GenerarFactura = () => {
                             placeholder="0.00"
                         />
                     </div>
+                    <p className="text-xs text-orange-500 mt-1 font-medium">* El monto final se calcula en base al pedido seleccionado.</p>
                 </div>
 
                 <div className="mb-6">
