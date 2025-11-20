@@ -7,10 +7,6 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
   const itemInOrder = activeOrder?.find((item) => item.id === dish.id);
   const quantity = itemInOrder ? itemInOrder.quantity : 0;
 
-  console.log(
-    `ITEM_RENDER: ${dish.nombre} (ID: ${dish.id}) - Cantidad actual: ${quantity}`
-  );
-
   /**
    * Gestiona el aumento o disminución de la cantidad y llama al padre para actualizar el estado.
    * @param {number} change - El cambio de cantidad (+1 o -1).
@@ -18,14 +14,10 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
   const handleUpdateQuantity = (change) => {
     // Evita añadir platos si no están disponibles
     if (!dish.disponible && change > 0) {
-      console.warn(`ACTION: Intento de añadir plato agotado: ${dish.nombre}`);
       return;
     }
 
     const newQuantity = quantity + change;
-    console.log(
-      `ACTION: Click en ${dish.nombre}. Nueva cantidad calculada: ${newQuantity}`
-    );
 
     if (newQuantity <= 0) {
       // Si la cantidad es 0 o menos, envía la acción 'remove' al padre
@@ -123,7 +115,6 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
         <img
           // Ajusto la altura de la imagen a 'h-36' en móviles y 'sm:h-40' en pantallas más grandes
           src={
-            dish.imagen ||
             "https://placehold.co/300x160/ef4444/ffffff?text=Plato%20No%20Image"
           }
           alt={dish.nombre}
@@ -152,4 +143,4 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
   );
 };
 
-export default MenuItem;
+export default React.memo(MenuItem);

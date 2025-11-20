@@ -89,7 +89,7 @@ const Header = () => {
                 <span className="font-semibold">
                   {usuarioSesion
                     ? `${usuarioSesion.rol?.toUpperCase() || "ROL"} - ${
-                        usuarioSesion.email || "SIN CORREO"
+                        usuarioSesion.nombre || "SIN CORREO"
                       }`
                     : "Invitado"}
                 </span>
