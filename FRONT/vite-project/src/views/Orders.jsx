@@ -99,6 +99,24 @@ const Orders = () => {
     navigate("/tables");
   };
 
+  // --- FUNCIÓN DE DEPURACIÓN (Ayuda a ver qué valores trae la API) ---
+  const logItemDetails = (orden, it, safeQuantity, safePrice, itemSubtotal) => {
+    console.log(
+      `[ORDER #${orden.id}] Ítem: ${
+        it.producto_nombre || it.name
+      }, Cantidad: ${safeQuantity}, Precio Unitario: ${safePrice.toFixed(
+        2
+      )}, Subtotal Calculado: ${itemSubtotal.toFixed(2)}`
+    );
+
+    // 🔴🔴🔴 LÍNEA CLAVE DE DEPURACIÓN 🔴🔴🔴
+    // Muestra el objeto completo del ítem. Si el subtotal es 0.00,
+    // debemos ver TODAS las claves para encontrar el precio.
+    if (itemSubtotal === 0) {
+      console.log(`[ÍTEM CRUCIAL] Objeto de Ítem con precio 0:`, it);
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-red-50 to-red-100 min-h-screen font-sans antialiased">
       <Header />
@@ -116,11 +134,13 @@ const Orders = () => {
           >
             🗺️ Ver Mesas
           </button>
+
+          {/* Botón de Facturas con ruta /Billing (capitalizada según tu referencia) */}
           <button
-            onClick={() => navigate("/manage-billing")}
+            onClick={() => navigate("/Billing")} // Cambiado a /Billing
             className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]"
           >
-            🧾 Historial de Facturas
+            🧾 Facturas
           </button>
         </div>
         {/* ------------------------------------- */}
@@ -171,7 +191,7 @@ const Orders = () => {
                   </p>
                 </div>
 
-                {/* Precio destacado */}
+                {/* Precio destacado (Total de la Orden) */}
                 <div className="text-right">
                   <span
                     className={`block text-xs font-bold uppercase tracking-wide ${
@@ -262,38 +282,69 @@ const Orders = () => {
                   ITEMS DEL PEDIDO:
                 </p>
                 {orden.items &&
-                  orden.items.map((it, index) => (
-                    <li
-                      key={index}
-                      className="flex justify-between items-center"
-                    >
-                      <span className="flex items-center">
-                        <span
-                          className={`font-bold mr-2 text-base ${
-                            orden.estado_pedido === "SERVIDO"
-                              ? "text-yellow-300"
-                              : "text-red-600"
-                          }`}
-                        >
-                          {it.cantidad}x
-                        </span>
-                        {it.producto_nombre || it.name}
-                      </span>
+                  orden.items.map((it, index) => {
+                    // Lógica para encontrar el precio unitario y convertirlo a número
+                    const rawPrice = it.precio || it.price || it.c_unit;
 
-                      {/* Precio Individual del ítem (Cantidad * Precio Unitario) */}
-                      {it.precio && (
-                        <span
-                          className={`font-semibold text-sm ${
-                            orden.estado_pedido === "SERVIDO"
-                              ? "text-yellow-300"
-                              : "text-red-600"
-                          }`}
-                        >
-                          ${(it.cantidad * it.precio).toFixed(2)}
+                    // Convertimos precio a número
+                    const unitPrice = parseFloat(rawPrice);
+
+                    // Convertimos cantidad a número, usando 1 como fallback si es inválido
+                    const quantity = parseFloat(it.cantidad);
+
+                    // Aseguramos que ambos sean números válidos para la multiplicación
+                    const safeQuantity = isNaN(quantity) ? 1 : quantity;
+                    const safePrice = isNaN(unitPrice) ? 0 : unitPrice;
+
+                    const itemSubtotal = safeQuantity * safePrice;
+
+                    // LOG DE DEPURACIÓN ACTIVO (te mostrará el objeto si el subtotal es 0)
+                    logItemDetails(
+                      orden,
+                      it,
+                      safeQuantity,
+                      safePrice,
+                      itemSubtotal
+                    );
+
+                    return (
+                      <li
+                        key={index}
+                        className="flex justify-between items-center"
+                      >
+                        <span className="flex items-center">
+                          <span
+                            className={`font-bold mr-2 text-base ${
+                              orden.estado_pedido === "SERVIDO"
+                                ? "text-yellow-300"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {it.cantidad}x
+                          </span>
+                          {it.producto_nombre || it.name}
                         </span>
-                      )}
-                    </li>
-                  ))}
+
+                        {/* Precio Individual del ítem (Cantidad * Precio Unitario) */}
+                        {itemSubtotal > 0 ? (
+                          <span
+                            className={`font-semibold text-sm ${
+                              orden.estado_pedido === "SERVIDO"
+                                ? "text-yellow-300"
+                                : "text-red-600"
+                            }`}
+                          >
+                            ${itemSubtotal.toFixed(2)}
+                          </span>
+                        ) : (
+                          // Este mensaje solo se verá si el subtotal es 0 o negativo
+                          <span className="font-semibold text-sm text-gray-400">
+                            $0.00 (Verificar datos de API)
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
               </ul>
 
               {/* Opciones de la Orden */}
