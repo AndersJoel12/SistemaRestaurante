@@ -5,13 +5,13 @@ import axios from "axios";
 
 import MenuItem from "../components/menu/MenuItem.jsx";
 import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
-import PreviewOrder from "../components/menu/PreviewOrder.jsx"; 
+import PreviewOrder from "../components/menu/PreviewOrder.jsx";
 import Header from "../components/Header.jsx";
-import Notification from "../components/Notification.jsx"; 
+import Notification from "../components/Notification.jsx";
 
 const URL_CATEGORY = "http://localhost:8000/api/categorias";
 const URL_DISHES = "http://localhost:8000/api/productos";
-const URL_PEDIDOS = "http://localhost:8000/api/pedidos/"; 
+const URL_PEDIDOS = "http://localhost:8000/api/pedidos/";
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ const Menu = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [mesaActiva, setMesaActiva] = useState(null);
-  const [notification, setNotification] = useState(null); 
+  const [notification, setNotification] = useState(null);
 
   // --- LÓGICA DE NOTIFICACIÓN ---
   const showNotification = useCallback((type, message) => {
@@ -34,7 +34,7 @@ const Menu = () => {
     }, 3000);
   }, []);
 
-  // --- VERIFICAR MESA ACTIVA (SIN REDIRECCIÓN FORZADA) ---
+  // --- VERIFICAR MESA ACTIVA ---
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
     if (storedMesa) {
@@ -43,7 +43,10 @@ const Menu = () => {
       showNotification("info", `Mesa ${mesa.number} cargada.`);
     } else {
       setMesaActiva(null);
-      showNotification("warning", "Modo menú: No hay mesa activa. No se podrá enviar la orden.");
+      showNotification(
+        "warning",
+        "Modo menú: No hay mesa activa. No se podrá enviar la orden."
+      );
     }
   }, [showNotification]);
 
@@ -82,12 +85,12 @@ const Menu = () => {
     fetchMenuData();
   }, [fetchMenuData]);
 
-  // --- FILTRADO (Limpio y Funcional) ---
+  // --- FILTRADO ---
   const filteredDishes = dishes.filter((d) => {
     const dishCategoryId = String(d.categoria_id);
     const activeCatString = String(activeCategory);
 
-    const categoryMatch = 
+    const categoryMatch =
       activeCatString === "all" || dishCategoryId === activeCatString;
 
     const dishName = d.nombre || "";
@@ -126,12 +129,11 @@ const Menu = () => {
     });
   };
 
-  // --- ENVIAR PEDIDO A DJANGO (Lógica Final) ---
+  // --- ENVIAR PEDIDO ---
   const sendOrder = async () => {
     let token = null;
     let empleadoId = null;
 
-    // 1. Obtener Auth
     try {
       const tokenString = localStorage.getItem("authTokens");
       if (tokenString) {
@@ -148,7 +150,6 @@ const Menu = () => {
       return;
     }
 
-    // 2. Validaciones (El bloqueo real)
     if (totalItems === 0 || !mesaActiva?.id) {
       showNotification("warning", "La orden está vacía o no hay mesa.");
       return;
@@ -159,56 +160,51 @@ const Menu = () => {
       return;
     }
 
-    // 3. Construir Payload
-    const ESTADO_DEFAULT = "RECIBIDO"; 
+    const ESTADO_DEFAULT = "RECIBIDO";
 
     const itemsPayload = activeOrder.map((it) => ({
       producto_id: it.id,
       cantidad: it.quantity,
-      observacion: it.observacion || "", 
+      observacion: it.observacion || "",
     }));
 
     const payload = {
       mesa_id: mesaActiva.id,
-      empleado_id: empleadoId, // Corregido a minúscula para el Serializer de Django
-      observacion: "", 
-      estado_pedido: ESTADO_DEFAULT, 
+      empleado_id: empleadoId,
+      observacion: "",
+      estado_pedido: ESTADO_DEFAULT,
       items: itemsPayload,
     };
 
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    // 4. Enviar
     try {
-      const response = await axios.post(URL_PEDIDOS, payload, { headers });
-      
-      showNotification("success", `¡Orden a Mesa ${mesaActiva.number} enviada!`);
-      setActiveOrder([]); 
-      
-      // Añadimos el delay para ver la notificación antes de navegar
-      setTimeout(() => {
-          navigate("/orders"); 
-      }, 1000);
+      await axios.post(URL_PEDIDOS, payload, { headers });
 
+      showNotification(
+        "success",
+        `¡Orden a Mesa ${mesaActiva.number} enviada!`
+      );
+      setActiveOrder([]);
+
+      setTimeout(() => {
+        navigate("/orders");
+      }, 1000);
     } catch (error) {
       console.error("Error enviando:", error.response || error);
       let errorMessage = "Error al enviar.";
-      
-      // Lógica robusta para extraer el error 400 del Backend
       if (error.response?.data) {
-         errorMessage = JSON.stringify(error.response.data);
+        errorMessage = JSON.stringify(error.response.data);
       }
-      
       showNotification("error", `Fallo: ${errorMessage}`);
     }
   };
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
-      
       {/* 🔐 Bloque Fijo Superior (Sticky) */}
-      <div className="sticky top-0 z-40 shadow-md bg-white">
+      <div className="sticky top-0 z-50 shadow-md bg-white">
         <Header />
 
         {mesaActiva && (
@@ -217,9 +213,8 @@ const Menu = () => {
           </div>
         )}
 
-        {/* Notificación Flotante */}
-        <Notification notification={notification} /> 
-        
+        <Notification notification={notification} />
+
         <MenuFilterBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -227,15 +222,16 @@ const Menu = () => {
           setActiveCategory={setActiveCategory}
           category={category}
         />
-      </div> 
+      </div>
       {/* Fin del bloque sticky */}
 
       {/* 🔽 Contenido Desplazable (Platos) */}
-      <main className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-32">
-        
+      <main className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 overflow-y-auto pb-32">
         {loading ? (
           <div className="col-span-full flex justify-center py-10">
-             <p className="text-red-700 font-semibold text-xl animate-pulse">⏳ Cargando menú...</p>
+            <p className="text-red-700 font-semibold text-xl animate-pulse">
+              ⏳ Cargando menú...
+            </p>
           </div>
         ) : apiError ? (
           <div className="col-span-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -263,15 +259,14 @@ const Menu = () => {
       {totalItems > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 p-4 pointer-events-none">
           <div className="max-w-4xl mx-auto pointer-events-auto">
-            <PreviewOrder 
-                activeOrder={activeOrder} 
-                onConfirm={sendOrder} 
-                showNotification={showNotification} 
+            <PreviewOrder
+              activeOrder={activeOrder}
+              onConfirm={sendOrder}
+              showNotification={showNotification}
             />
           </div>
         </div>
       )}
-
     </div>
   );
 };
