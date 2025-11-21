@@ -3,13 +3,14 @@ import axios from "axios";
 import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
 
-// Usamos 127.0.0.1 para evitar errores de red (CORS)
+// Usamos 127.0.0.1 para evitar errores de CORS
 const API_URL = "http://127.0.0.1:8000/api/pedidos";
 
-// Definimos los estados clave para el Mesero
+// Definimos los estados clave
 const ESTADOS = {
-  PREPARADO: "PREPARADO", // 🚨 Cocina terminó -> Mesero debe entregar (Prioridad)
-  ENTREGADO: "ENTREGADO", // ✅ Ya en mesa -> Cliente comiendo / Esperando pago
+  PREPARADO: "PREPARADO", // 🚨 Cocina terminó -> Mesero debe entregar
+  ENTREGADO: "ENTREGADO", // ✅ En mesa -> Botón cerrar disponible
+  SERVIDO: "SERVIDO",     // 🏁 Orden cerrada/servida
 };
 
 const Orders = () => {
@@ -25,7 +26,7 @@ const Orders = () => {
       // Filtramos: Traemos todo MENOS lo que ya se cobró (CERRADO)
       const activeOrders = response.data.filter(o => o.estado_pedido !== 'CERRADO');
 
-      // Ordenamos: Los PREPARADO van primero porque son la prioridad
+      // Ordenamos: Los PREPARADO primero (Prioridad Alta)
       activeOrders.sort((a, b) => {
         if (a.estado_pedido === ESTADOS.PREPARADO && b.estado_pedido !== ESTADOS.PREPARADO) return -1;
         if (a.estado_pedido !== ESTADOS.PREPARADO && b.estado_pedido === ESTADOS.PREPARADO) return 1;
@@ -36,53 +37,64 @@ const Orders = () => {
       setError(null);
     } catch (err) {
       console.error("Error trayendo pedidos:", err);
-      setError("No se pudieron cargar los pedidos de la base de datos.");
+      setError("No se pudieron cargar los pedidos.");
     }
   };
 
-  // Polling: Recargar cada 5 segundos
   useEffect(() => {
     fetchOrders();
     const intervalId = setInterval(fetchOrders, 5000);
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- 2. ACCIÓN PRINCIPAL: ENTREGAR (PREPARADO -> ENTREGADO) ---
+  // --- 2. ACCIÓN: ENTREGAR (PREPARADO -> ENTREGADO) ---
   const entregarPedido = async (id) => {
     try {
-      // Enviamos PATCH para cambiar el estado
       await axios.patch(`${API_URL}/${id}/`, {
         estado_pedido: ESTADOS.ENTREGADO,
       });
-
-      // Actualización Optimista (Feedback instantáneo en pantalla)
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === id ? { ...order, estado_pedido: ESTADOS.ENTREGADO } : order
         )
       );
     } catch (err) {
-      console.error("Error al entregar:", err);
-      alert("Error de conexión al marcar como entregado.");
+      alert("Error al marcar como entregado.");
     }
   };
 
-  // --- 3. CANCELAR ORDEN ---
-  const cancelOrder = async (id) => {
-    if (!window.confirm(`¿Seguro que quieres CANCELAR la orden #${id}?`)) return;
+  // --- 3. ACCIÓN: CERRAR ORDEN (ENTREGADO -> SERVIDO) ---
+  // Este es el botón que querías de vuelta
+  const closeOrder = async (id) => {
+    try {
+      await axios.patch(`${API_URL}/${id}/`, {
+        estado_pedido: ESTADOS.SERVIDO,
+      });
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === id ? { ...order, estado_pedido: ESTADOS.SERVIDO } : order
+        )
+      );
+    } catch (err) {
+      console.error("Error cerrando orden:", err);
+      alert("Error al cerrar la orden.");
+    }
+  };
 
+  // --- 4. CANCELAR ORDEN ---
+  const cancelOrder = async (id) => {
+    if (!window.confirm(`¿Cancelar orden #${id}?`)) return;
     try {
       await axios.delete(`${API_URL}/${id}/`);
       setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id));
     } catch (err) {
-      console.error("Error eliminando:", err);
-      alert("Error al cancelar la orden.");
+      alert("Error al cancelar.");
     }
   };
 
   // Navegación
   const goToTables = () => navigate("/tables");
-  const goToBilling = () => navigate("/manage-billing");
+  const goToBilling = () => navigate("/billing");
 
   return (
     <div className="bg-gradient-to-br from-red-50 to-red-100 min-h-screen font-sans antialiased">
@@ -93,20 +105,11 @@ const Orders = () => {
           Tus Pedidos
         </h1>
 
-        {/* --- BOTONES DE NAVEGACIÓN (Estilo Original) --- */}
         <div className="flex justify-center gap-4 my-6">
-          <button
-            onClick={goToTables}
-            className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]"
-          >
+          <button onClick={goToTables} className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]">
             🗺️ Ver Mesas
           </button>
-
-          {/* Botón de Facturas con ruta /Billing (capitalizada según tu referencia) */}
-          <button
-            onClick={goToBilling}
-            className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]"
-          >
+          <button onClick={goToBilling} className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]">
             🧾 Facturas
           </button>
         </div>
@@ -120,17 +123,14 @@ const Orders = () => {
         {orders.length === 0 && !error && (
           <div className="bg-white p-6 rounded-lg shadow-md text-center text-gray-500 italic mb-6">
             <p className="text-lg">No hay pedidos activos.</p>
-            <p className="mt-2 text-sm">¡A esperar clientes!</p>
           </div>
         )}
 
         <div className="space-y-6">
           {orders.map((orden) => {
-            // LÓGICA VISUAL:
-            // Si está PREPARADO, usamos el estilo "Highlight" (Amarillo/Rojo oscuro)
-            // Si no (ENTREGADO/ABIERTO), usamos el estilo "Normal" (Blanco/Rojo)
             const isPreparado = orden.estado_pedido === ESTADOS.PREPARADO;
             const isEntregado = orden.estado_pedido === ESTADOS.ENTREGADO;
+            const isServido = orden.estado_pedido === ESTADOS.SERVIDO;
 
             return (
               <div
@@ -141,81 +141,44 @@ const Orders = () => {
                   ${
                     isPreparado
                       ? "border-yellow-500 bg-gradient-to-r from-red-700 to-red-900 text-yellow-100" // Estilo LISTO
-                      : "border-red-600 bg-white text-red-800" // Estilo NORMAL
+                      : isServido 
+                        ? "border-green-600 bg-green-50 text-green-900 opacity-80" // Estilo SERVIDO
+                        : "border-red-600 bg-white text-red-800" // Estilo NORMAL (Entregado)
                   }
                 `}
               >
-                {/* Cabecera de la tarjeta */}
+                {/* Cabecera */}
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <p className="font-extrabold text-3xl">Orden #{orden.id}</p>
-                    <p
-                      className={`text-sm opacity-80 mt-1 ${
-                        isPreparado ? "text-yellow-300" : "text-gray-600"
-                      }`}
-                    >
+                    <p className={`text-sm opacity-80 mt-1 ${isPreparado ? "text-yellow-300" : "text-gray-600"}`}>
                       {orden.fecha} - {orden.hora}
                     </p>
                   </div>
-
-                  {/* Precio destacado */}
                   <div className="text-right">
-                    <span
-                      className={`block text-xs font-bold uppercase tracking-wide ${
-                        isPreparado ? "text-yellow-400" : "text-gray-500"
-                      }`}
-                    >
+                    <span className={`block text-xs font-bold uppercase tracking-wide ${isPreparado ? "text-yellow-400" : "text-gray-500"}`}>
                       Total
                     </span>
-                    <span
-                      className={`font-extrabold text-4xl ${
-                        isPreparado ? "text-yellow-300" : "text-yellow-500"
-                      }`}
-                    >
+                    <span className={`font-extrabold text-4xl ${isPreparado ? "text-yellow-300" : "text-yellow-500"}`}>
                       ${orden.CostoTotal || "0.00"}
                     </span>
                   </div>
                 </div>
 
-                <hr
-                  className={`my-4 ${
-                    isPreparado ? "border-yellow-600" : "border-red-200"
-                  }`}
-                />
+                <hr className={`my-4 ${isPreparado ? "border-yellow-600" : "border-red-200"}`} />
 
+                {/* Info Mesa y Estado */}
                 <div className="flex justify-between items-center mb-4">
-                  <p
-                    className={`text-sm font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1 ${
-                      isPreparado
-                        ? "bg-yellow-600 text-red-900"
-                        : "bg-red-100 text-red-600"
-                    }`}
-                  >
+                  <p className={`text-sm font-semibold px-3 py-1 rounded-full inline-flex items-center gap-1 ${isPreparado ? "bg-yellow-600 text-red-900" : "bg-red-100 text-red-600"}`}>
                     <span>Status:</span>
-                    <span className="uppercase font-bold">
-                      {orden.estado_pedido}
-                    </span>
+                    <span className="uppercase font-bold">{orden.estado_pedido}</span>
                   </p>
-
                   {orden.mesa_id && (
                     <div className="flex items-center gap-4">
-                      <p
-                        className={`text-lg font-bold ${
-                          isPreparado ? "text-yellow-200" : "text-red-700"
-                        }`}
-                      >
+                      <p className={`text-lg font-bold ${isPreparado ? "text-yellow-200" : "text-red-700"}`}>
                         Mesa: <span className="ml-1">{orden.mesa_id}</span>
                       </p>
-                      
-                      {/* Botón pequeño para ver mapa */}
-                      <button
-                        onClick={goToTables}
-                        className={`text-xs font-semibold px-3 py-1 rounded-full border transition hover:shadow-md ${
-                          isPreparado
-                            ? "bg-yellow-400 text-red-900 border-yellow-400 hover:bg-yellow-500"
-                            : "bg-red-50 text-red-700 border-red-300 hover:bg-red-100"
-                        }`}
-                      >
+                      <button onClick={goToTables} className={`text-xs font-semibold px-3 py-1 rounded-full border transition hover:shadow-md ${isPreparado ? "bg-yellow-400 text-red-900 border-yellow-400 hover:bg-yellow-500" : "bg-red-50 text-red-700 border-red-300 hover:bg-red-100"}`}>
                         Ver Mesas 🗺️
                       </button>
                     </div>
@@ -223,47 +186,23 @@ const Orders = () => {
                 </div>
 
                 {/* Lista de productos */}
-                <ul
-                  className={`p-3 rounded-lg text-sm space-y-2 ${
-                    isPreparado
-                      ? "bg-red-800 text-yellow-200"
-                      : "bg-red-50 text-red-700"
-                  }`}
-                >
-                  <p
-                    className={`font-semibold text-xs mb-1 ${
-                      isPreparado ? "text-yellow-400" : "text-red-500"
-                    }`}
-                  >
-                    ITEMS DEL PEDIDO:
-                  </p>
-                  {orden.items &&
-                    orden.items.map((it, index) => (
-                      <li key={index} className="flex justify-between items-center">
-                        <span className="flex items-center">
-                          <span
-                            className={`font-bold mr-2 text-base ${
-                              isPreparado ? "text-yellow-300" : "text-red-600"
-                            }`}
-                          >
-                            {it.cantidad}x
-                          </span>
-                          {it.producto_nombre || "Producto"}
-                        </span>
-                        {/* Precio unitario opcional */}
-                        {it.precio && (
-                           <span className={`text-xs ${isPreparado ? "text-yellow-400" : "text-red-400"}`}>
-                             ${(it.cantidad * it.precio).toFixed(2)}
-                           </span>
-                        )}
-                      </li>
-                    ))}
+                <ul className={`p-3 rounded-lg text-sm space-y-2 ${isPreparado ? "bg-red-800 text-yellow-200" : "bg-red-50 text-red-700"}`}>
+                  <p className={`font-semibold text-xs mb-1 ${isPreparado ? "text-yellow-400" : "text-red-500"}`}>ITEMS DEL PEDIDO:</p>
+                  {orden.items && orden.items.map((it, index) => (
+                    <li key={index} className="flex justify-between items-center">
+                      <span className="flex items-center">
+                        <span className={`font-bold mr-2 text-base ${isPreparado ? "text-yellow-300" : "text-red-600"}`}>{it.cantidad}x</span>
+                        {it.producto_nombre || "Producto"}
+                      </span>
+                      {it.precio && <span className={`text-xs ${isPreparado ? "text-yellow-400" : "text-red-400"}`}>${(it.cantidad * it.precio).toFixed(2)}</span>}
+                    </li>
+                  ))}
                 </ul>
 
                 {/* --- BOTONES DE ACCIÓN --- */}
                 <div className="mt-6 flex justify-end gap-3">
                   
-                  {/* CASO 1: PREPARADO -> Muestra botón de ENTREGAR */}
+                  {/* 1. SI ESTÁ PREPARADO: Botón LLEVAR A MESA */}
                   {isPreparado && (
                     <button
                       onClick={() => entregarPedido(orden.id)}
@@ -273,14 +212,25 @@ const Orders = () => {
                     </button>
                   )}
 
-                  {/* CASO 2: ENTREGADO -> Muestra aviso informativo */}
+                  {/* 2. SI ESTÁ ENTREGADO: Botón CERRAR ORDEN (Lo que pediste) */}
                   {isEntregado && (
-                    <div className="px-5 py-2 bg-blue-100 text-blue-600 font-bold rounded-full border border-blue-200 flex items-center gap-2 cursor-default">
-                      🍽️ Cliente Comiendo...
-                    </div>
+                      /* Botón de CERRAR ORDEN (Servido) (Solo si NO está SERVIDO) */
+                  <button
+                    onClick={() => closeOrder(orden.id)}
+                    className="px-5 py-2 bg-yellow-600 text-red-900 font-bold rounded-full shadow-lg hover:bg-yellow-700 transition transform hover:-translate-y-1 active:scale-95 border-b-4 border-yellow-800 flex items-center gap-2"
+                  >
+                    ✅ Cerrar Orden (Servido)
+                  </button>
                   )}
 
-                  {/* Botón de CANCELAR */}
+                  {/* 3. SI YA ESTÁ SERVIDO (Feedback visual) */}
+                  {isServido && (
+                    <span className="px-4 py-2 bg-green-100 text-green-700 font-bold rounded-lg border border-green-200 cursor-default">
+                      🏁 Servido
+                    </span>
+                  )}
+
+                  {/* Botón Cancelar */}
                   <button
                     onClick={() => cancelOrder(orden.id)}
                     className="px-5 py-2 bg-gray-500 text-white font-bold rounded-full shadow-lg hover:bg-gray-700 transition transform hover:-translate-y-1 active:scale-95 border-b-4 border-gray-800 flex items-center gap-2"
