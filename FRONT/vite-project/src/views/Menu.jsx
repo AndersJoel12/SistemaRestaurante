@@ -9,13 +9,14 @@ import PreviewOrder from "../components/menu/PreviewOrder.jsx";
 import Header from "../components/Header.jsx";
 import Notification from "../components/Notification.jsx";
 
-// --- CONSTANTES DE API ---
+// --- CONFIGURACIÓN API ---
 const API_BASE = "http://localhost:8000/api";
 const URL_CATEGORY = `${API_BASE}/categorias`;
 const URL_DISHES = `${API_BASE}/productos`;
 const URL_PEDIDOS = `${API_BASE}/pedidos/`;
 // [NUEVO] Endpoint para traer las mesas reales
 const URL_MESAS = `${API_BASE}/mesas`;
+
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -27,8 +28,10 @@ const Menu = () => {
   const [apiError, setApiError] = useState(null);
 
   // [NUEVO] Estados para el manejo de cambio de mesa
-  const [availableTables, setAvailableTables] = useState([]); // Lista de mesas reales
-  const [showTableModal, setShowTableModal] = useState(false); // Controla el modal
+  
+  
+  const [availableTables, setAvailableTables] = useState([]); 
+  const [showTableModal, setShowTableModal] = useState(false);
 
   const [activeOrder, setActiveOrder] = useState(() => {
     const savedOrder = sessionStorage.getItem("active_order");
@@ -40,21 +43,26 @@ const Menu = () => {
   const [mesaActiva, setMesaActiva] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  // --- NOTIFICACIONES ---
   const showNotification = useCallback((type, message) => {
     setNotification({ type, message });
     const timer = setTimeout(() => setNotification(null), 3000);
     return () => clearTimeout(timer);
   }, []);
 
-  // --- PERSISTENCIA CARRITO ---
+  // --- PERSISTENCIA ---
   useEffect(() => {
     sessionStorage.setItem("active_order", JSON.stringify(activeOrder));
+    // LOG ESTRATÉGICO: Ver el carrito cada vez que cambia
+    if (activeOrder.length > 0) {
+        console.log("🛒 [CART UPDATE] Contenido actual del carrito:", activeOrder);
+    }
   }, [activeOrder]);
 
-  // --- CARGAR MESA INICIAL ---
+  // --- CARGAR MESA (Sin bloqueo inicial) ---
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
+    console.log("🔄 [INIT] Leyendo sessionStorage...", storedMesa);
+    
     if (storedMesa) {
       try {
         const mesaParsed = JSON.parse(storedMesa);
@@ -66,42 +74,48 @@ const Menu = () => {
           setShowTableModal(true);
           fetchTables(); // Vamos a buscar las mesas reales
         }
+        const parsed = JSON.parse(storedMesa);
+        setMesaActiva(parsed);
+        console.log("✅ [INIT] Mesa activa cargada:", parsed);
       } catch (e) {
-        console.error("Error mesa:", e);
+        console.error("❌ [INIT] Error parseando mesa:", e);
         setMesaActiva(null);
       }
     } else {
-      // Si no hay mesa, también forzamos la selección
-      setShowTableModal(true);
-      fetchTables();
+        console.warn("⚠️ [INIT] No hay mesa en storage.");
     }
   }, []);
 
-  // [NUEVO] Función para cargar las mesas desde la API
+  // --- 1. FETCH MESAS CON FILTRO ---
   const fetchTables = async () => {
+    console.log("📡 [API] Solicitando mesas al servidor...");
     try {
       const response = await axios.get(URL_MESAS);
       // Filtramos solo las mesas disponibles si tu API tiene un campo 'estado'
       // Si no, usa response.data directamente
       setAvailableTables(response.data);
+      const allTables = response.data;
+      console.log("📥 [API] Todas las mesas recibidas:", allTables);
+      
+      // 🔍 FILTRO
+      const freeTables = allTables.filter(table => 
+        table.estado.toLowerCase() === 'libre' || table.estado.toLowerCase() === 'disponible'
+      );
+      
+      console.log("✨ [API] Mesas filtradas (Disponibles):", freeTables);
+      setAvailableTables(freeTables);
+
     } catch (error) {
-      console.error("Error cargando mesas:", error);
-      showNotification("error", "No se pudieron cargar las mesas disponibles.");
+      console.error("❌ [API] Error cargando mesas:", error);
+      showNotification("error", "No se pudieron cargar las mesas.");
     }
   };
 
-  // [NUEVO] Función para confirmar el cambio de mesa
-  const handleSelectTable = (mesa) => {
-    setMesaActiva(mesa);
-    sessionStorage.setItem("mesa_activa", JSON.stringify(mesa));
-    setShowTableModal(false); // Cerramos el modal
-    showNotification("success", `¡Bienvenido a la Mesa ${mesa.number}!`);
-  };
-
-  // --- CARGAR DATOS DEL MENÚ ---
+  // --- CARGAR MENÚ ---
   const fetchMenuData = useCallback(async () => {
     setLoading(true);
     try {
+      console.log("📡 [API] Cargando categorías y productos...");
       const [catResponse, dishResponse] = await Promise.all([
         axios.get(URL_CATEGORY),
         axios.get(URL_DISHES),
@@ -111,8 +125,11 @@ const Menu = () => {
         ...catResponse.data,
       ]);
       setDishes(dishResponse.data);
+      console.log("✅ [API] Datos del menú cargados correctamente.");
     } catch (error) {
       setApiError("Error al cargar el menú.");
+        console.error("❌ [API] Error menú:", error);
+        setApiError("Error de conexión al cargar menú.");
     } finally {
       setLoading(false);
     }
@@ -122,7 +139,7 @@ const Menu = () => {
     fetchMenuData();
   }, [fetchMenuData]);
 
-  // --- OPTIMIZACIÓN (useMemo) ---
+  // --- FILTROS Y TOTALES ---
   const filteredDishes = useMemo(() => {
     return dishes.filter((d) => {
       const catId = String(d.categoria_id);
@@ -131,17 +148,18 @@ const Menu = () => {
       const matchesSearch = (d.nombre || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
+     
       return matchesCategory && matchesSearch;
     });
   }, [dishes, activeCategory, searchTerm]);
 
-  const totalItems = useMemo(
-    () => activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0),
-    [activeOrder]
-  );
+ 
+  const totalItems = useMemo(() => activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0), [activeOrder]);
 
-  // --- ACTUALIZAR CARRITO ---
   const updateOrder = (dish, action, newQuantity) => {
+    // LOG ESTRATÉGICO: Ver qué acción está ocurriendo
+    console.log(`🔧 [ACTION] ${action.toUpperCase()} - Plato: ${dish.nombre}, Nueva Cantidad: ${newQuantity}`);
+    
     setActiveOrder((prev) => {
       const newOrder = [...prev];
       const index = newOrder.findIndex((item) => item.id === dish.id);
@@ -169,6 +187,11 @@ const Menu = () => {
 
     if (totalItems === 0) return;
 
+  // --- 2. LÓGICA CENTRAL DE ENVÍO ---
+  
+  const executeOrderSubmission = async (targetTableId, targetTableNumber) => {
+    console.log(`🚀 [SUBMIT] Iniciando envío para Mesa ID: ${targetTableId} (Nro: ${targetTableNumber})`);
+    
     const tokenString = localStorage.getItem("authTokens");
     // NOTA: Si es un cliente invitado (sin login), tal vez no tengas token.
     // Si tu backend requiere token obligatoriamente, el cliente debe loguearse antes.
@@ -189,11 +212,83 @@ const Menu = () => {
     } catch (e) {
       showNotification("error", "Error enviando pedido");
     }
+    let token = null;
+    let userId = null;
+
+    if (tokenString) {
+        const data = JSON.parse(tokenString);
+        token = data.access;
+        userId = jwtDecode(token).user_id;
+    } 
+
+    // Payload construction
+    const payload = {
+        mesa_id: targetTableId, 
+        empleado_id: userId, 
+        observacion: "",
+        estado_pedido: "ABIERTO",
+        items: activeOrder.map((it) => ({
+          producto_id: it.id,
+          cantidad: it.quantity,
+          observacion: it.observacion || "",
+        })),
+    };
+
+    // LOG ESTRATÉGICO: Este es el más importante. Muestra qué se va a enviar.
+    console.log("📦 [PAYLOAD] JSON a enviar:", JSON.stringify(payload, null, 2));
+
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    try {
+        const response = await axios.post(URL_PEDIDOS, payload, { headers });
+        console.log("✅ [SUCCESS] Respuesta del servidor:", response.data);
+        
+        showNotification("success", `¡Pedido enviado a Mesa ${targetTableNumber}!`);
+        setActiveOrder([]);
+        sessionStorage.removeItem("active_order");
+        
+        const mesaActualizada = { ...mesaActiva, id: targetTableId, number: targetTableNumber };
+        sessionStorage.setItem("mesa_activa", JSON.stringify(mesaActualizada));
+        setMesaActiva(mesaActualizada);
+
+        setTimeout(() => navigate("/orders"), 1500);
+        setShowTableModal(false);
+
+    } catch (error) {
+        console.error("❌ [ERROR] Falló el envío:", error.response?.data || error.message);
+        showNotification("error", "Error al enviar el pedido.");
+    }
+  };
+
+  // Esta es la función que llama el botón "CONFIRMAR PEDIDO"
+  const handleInitiateOrder = () => {
+    console.log("🖱️ [CLICK] Usuario presionó Confirmar Pedido.");
+    
+    if (totalItems === 0) return;
+
+    // 🛑 INTERCEPTOR
+    if (!mesaActiva || mesaActiva.number === "999" || mesaActiva.id === 999) {
+        console.warn("🛑 [INTERCEPTOR] Mesa Virtual detectada. Abriendo modal de selección.");
+        showNotification("info", "Por favor selecciona tu mesa para confirmar.");
+        fetchTables(); 
+        setShowTableModal(true);
+        return;
+    }
+
+    console.log("✅ [DIRECT] Mesa válida detectada. Enviando directo.");
+    executeOrderSubmission(mesaActiva.id, mesaActiva.number);
+  };
+
+  const handleSelectTableAndSend = (table) => {
+    console.log("🖱️ [MODAL] Usuario seleccionó mesa del modal:", table);
+    executeOrderSubmission(table.id, table.number);
   };
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
       {/* Header Fijo */}
+      {/* Header */}
       <div className="sticky top-0 z-40 shadow-md bg-white">
         <Header />
         {mesaActiva && (
@@ -202,6 +297,11 @@ const Menu = () => {
             {mesaActiva.number === "999"
               ? "Virtual (Seleccionar Mesa)"
               : mesaActiva.number}
+          <div className={`font-bold text-center py-2 shadow-sm text-sm ${mesaActiva.number === "999" ? "bg-blue-100 text-blue-800" : "bg-yellow-400 text-red-900"}`}>
+            {mesaActiva.number === "999" 
+                ? "🛒 Modo Cliente: Seleccionando productos..." 
+                : `📌 Mesa ${mesaActiva.number}`
+            }
           </div>
         )}
         <Notification notification={notification} />
@@ -214,7 +314,7 @@ const Menu = () => {
         />
       </div>
 
-      {/* Grid de Platos */}
+      {/* Grid */}
       <main className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-32">
         {/* ... (Tu código de carga y mapeo de platos igual que antes) ... */}
         {loading ? (
@@ -229,6 +329,11 @@ const Menu = () => {
             />
           ))
         )}
+        {loading ? <p className="text-center w-full py-10">Cargando...</p> : 
+         filteredDishes.map(dish => (
+            <MenuItem key={dish.id} dish={dish} activeOrder={activeOrder} updateOrder={updateOrder} />
+         ))
+        }
       </main>
 
       {/* Preview Order */}
@@ -240,20 +345,27 @@ const Menu = () => {
               onConfirm={sendOrder}
               showNotification={showNotification}
               updateOrder={updateOrder}
+            <PreviewOrder 
+                activeOrder={activeOrder} 
+                onConfirm={handleInitiateOrder} 
+                showNotification={showNotification}
+                updateOrder={updateOrder}
             />
           </div>
         </div>
       )}
 
-      {/* [NUEVO] MODAL DE SELECCIÓN DE MESA OBLIGATORIA */}
+      {/* MODAL */}
       {showTableModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[60]">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-[90%] max-w-lg text-center animate-bounce-in">
-            <h2 className="text-2xl font-extrabold text-red-700 mb-2">
-              📍 ¿Dónde estás sentado?
-            </h2>
+            <div className="flex justify-between items-center mb-4">
+                 <h2 className="text-2xl font-extrabold text-red-700">📍 Elige tu Mesa</h2>
+                 <button onClick={() => setShowTableModal(false)} className="text-gray-400 text-xl">&times;</button>
+            </div>
+           
             <p className="text-gray-500 mb-6">
-              Selecciona tu número de mesa para que podamos llevarte tu comida.
+              Todo listo. Selecciona dónde estás sentado para enviar la orden inmediatamente.
             </p>
 
             {availableTables.length === 0 ? (
@@ -262,19 +374,25 @@ const Menu = () => {
                   Buscando mesas disponibles...
                 </p>
               </div>
+               <div className="p-4 bg-yellow-50 text-yellow-700 rounded-lg">
+                  {loading ? "Buscando mesas..." : "No hay mesas disponibles en este momento."}
+               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-2 custom-scrollbar">
                 {availableTables.map((table) => (
                   <button
                     key={table.id}
-                    onClick={() => handleSelectTable(table)}
-                    className="p-4 bg-gray-100 hover:bg-red-100 border-2 border-gray-200 hover:border-red-500 rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-1 group"
+                    onClick={() => handleSelectTableAndSend(table)}
+                    className="p-4 bg-white border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-1 group shadow-sm"
                   >
                     <span className="text-2xl group-hover:scale-110 transition-transform">
                       🪑
                     </span>
                     <span className="font-bold text-gray-700 group-hover:text-red-700">
                       Mesa {table.number}
+                    <span className="text-2xl">🪑</span>
+                    <span className="font-bold text-gray-700 group-hover:text-green-700">
+                      {table.number}
                     </span>
                   </button>
                 ))}

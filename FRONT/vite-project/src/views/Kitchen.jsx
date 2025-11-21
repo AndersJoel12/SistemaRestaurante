@@ -3,21 +3,30 @@ import axios from "axios";
 
 const API_PEDIDOS = "http://localhost:8000/api/pedidos";
 
-// Mantenemos las constantes para evitar errores
+// Mantenemos tus estados
 const ESTADOS = {
-  NUEVO: "RECIBIDO",
+  NUEVO: "ABIERTO",
   COCINANDO: "EN_ESPERA",
   LISTO: "PREPARADO",
-  FINALIZADO: "SERVIDO"
+  FINALIZADO: "CERRADO"
 };
 
 const Kitchen = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState(null);
 
+  // --- FORMATO DE HORA ---
+  const formatTime = (time) => time ? time.substring(0, 5) : "--:--";
+
+  // --- CARGAR PEDIDOS CON LOGS ---
   const fetchOrders = useCallback(async () => {
+    console.log("📡 [COCINA] Iniciando petición a API...");
     try {
       const response = await axios.get(`${API_PEDIDOS}/`);
+      
+      // 1. LOG DE LA RESPUESTA CRUDA
+      console.log("📦 [COCINA] Respuesta API (Raw Data):", response.data);
+
       if (Array.isArray(response.data)) {
         const kitchenOrders = response.data.filter(
           (o) => 
@@ -25,12 +34,29 @@ const Kitchen = () => {
             o.estado_pedido === ESTADOS.COCINANDO || 
             o.estado_pedido === ESTADOS.LISTO
         );
+        
+        // 2. LOG DE PEDIDOS FILTRADOS
+        console.log(`🍳 [COCINA] Pedidos filtrados (${kitchenOrders.length}):`, kitchenOrders);
+
+        // 3. LOG PROFUNDO DEL PRIMER PEDIDO (Para ver la estructura de los items)
+        if (kitchenOrders.length > 0) {
+            const primerPedido = kitchenOrders[0];
+            console.log("🔍 [INSPECCIÓN] Estructura del primer pedido:", primerPedido);
+            console.log("🔍 [INSPECCIÓN] ¿Existe campo 'items'?", primerPedido.items);
+            
+            if (primerPedido.items && primerPedido.items.length > 0) {
+                console.log("🔍 [INSPECCIÓN] Estructura de un item individual:", primerPedido.items[0]);
+            } else {
+                console.warn("⚠️ [ALERTA] El primer pedido NO tiene items o el array está vacío.");
+            }
+        }
+
         kitchenOrders.sort((a, b) => new Date(a.fecha + ' ' + a.hora) - new Date(b.fecha + ' ' + b.hora));
         setOrders(kitchenOrders);
+        setError(null);
       }
     } catch (err) {
-      console.error("Error cargando cocina:", err);
-      setError("Error de conexión...");
+      console.error("❌ [ERROR] Fallo al cargar cocina:", err);
     }
   }, []);
 
@@ -41,8 +67,9 @@ const Kitchen = () => {
   }, [fetchOrders]);
 
   const avanzarEstado = async (orden) => {
-    let nuevoEstado = "";
+    console.log(`🔧 [ACCIÓN] Avanzando estado para Orden #${orden.id}. Estado actual: ${orden.estado_pedido}`);
     
+    let nuevoEstado = "";
     switch (orden.estado_pedido) {
       case ESTADOS.NUEVO: nuevoEstado = ESTADOS.COCINANDO; break;
       case ESTADOS.COCINANDO: nuevoEstado = ESTADOS.LISTO; break;
@@ -59,8 +86,9 @@ const Kitchen = () => {
 
     try {
         await axios.patch(`${API_PEDIDOS}/${orden.id}/`, { estado_pedido: nuevoEstado });
+        console.log(`✅ [ÉXITO] Orden #${orden.id} actualizada a: ${nuevoEstado}`);
     } catch (err) {
-        alert("Error de conexión");
+        console.error("❌ [ERROR] Fallo update:", err);
         setOrders(copiaOriginal);
     }
   };
@@ -69,12 +97,44 @@ const Kitchen = () => {
   const pendientes = orders.filter(o => o.estado_pedido === ESTADOS.COCINANDO);
   const finalizados = orders.filter(o => o.estado_pedido === ESTADOS.LISTO);
 
-  const formatTime = (time) => time ? time.substring(0, 5) : "--:--";
+  // --- COMPONENTE DE LISTA CON LOGS INTERNOS ---
+  const OrderItemsList = ({ items, observacion, orderId }) => {
+    // Validamos si items existe
+    if (!items || items.length === 0) {
+        console.warn(`⚠️ [RENDER] Orden #${orderId} no tiene items para mostrar.`);
+        return <div className="text-red-500 text-xs">Sin items (Revisar consola)</div>;
+    }
+
+    return (
+      <>
+        <ul className="ml-4 list-disc text-sm text-gray-700 mb-3 space-y-1">
+          {items.map((item, idx) => {
+            // LOG PARA VER CADA ITEM AL RENDERIZARSE
+            // Esto nos dirá si las propiedades se llaman "producto_nombre", "nombre", "producto.nombre", etc.
+            // console.log(`📝 [ITEM RAW] Orden #${orderId} - Item ${idx}:`, item);
+
+            // Intentamos obtener el nombre de varias formas comunes para evitar fallos
+            const nombreProducto = item.producto_nombre || item.nombre || item.producto?.nombre || "Producto Desconocido";
+            const cantidad = item.cantidad || 1;
+
+            return (
+              <li key={item.id || idx}>
+                <span className="font-bold">{cantidad}x</span> {nombreProducto}
+              </li>
+            );
+          })}
+        </ul>
+        {observacion && (
+           <div className="bg-white p-2 rounded text-xs text-red-600 border border-red-100 mb-3 italic font-bold">
+              📝 {observacion}
+           </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      
-      {/* --- 1. ENCABEZADO ORIGINAL RESTAURADO --- */}
       <div className="bg-red-800 text-white shadow-lg sticky top-0 z-10 border-b-4 border-yellow-500">
         <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400 tracking-wider flex justify-center items-center gap-3">
           COCINA
@@ -82,10 +142,9 @@ const Kitchen = () => {
         {error && <div className="bg-red-600 text-white text-center text-xs p-1">{error}</div>}
       </div>
 
-      {/* CONTENEDOR 3 COLUMNAS */}
       <div className="flex flex-col lg:flex-row gap-4 p-4 items-start h-full">
         
-        {/* --- COLUMNA 1: NUEVOS (Estilo Ticket/Entrada) --- */}
+        {/* --- COLUMNA 1: NUEVOS --- */}
         <div className="flex-1 w-full bg-white rounded-lg shadow-md p-4 border-t-4 border-gray-400">
           <h2 className="text-xl font-bold mb-4 text-gray-700 flex justify-between items-center">
              <span>🔔 Recibidos</span>
@@ -101,7 +160,9 @@ const Kitchen = () => {
                     <span className="font-bold text-gray-800">#{orden.id} - Mesa {orden.mesa_id}</span>
                     <span className="font-mono text-gray-500 text-sm">{formatTime(orden.hora)}</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-2 italic">Nuevo pedido entrante...</p>
+                
+                {/* Pasamos el ID para el log */}
+                <OrderItemsList items={orden.items} observacion={orden.observacion} orderId={orden.id} />
                 
                 <button
                   onClick={() => avanzarEstado(orden)}
@@ -114,7 +175,7 @@ const Kitchen = () => {
           </div>
         </div>
 
-        {/* --- COLUMNA 2: PENDIENTES (Estilo Original Amarillo) --- */}
+        {/* --- COLUMNA 2: PENDIENTES --- */}
         <div className="flex-1 w-full bg-white rounded-lg shadow-md p-4 border-t-4 border-yellow-400">
           <h2 className="text-xl font-bold mb-4 text-gray-700 flex justify-between items-center">
              <span>🔥 En Preparación</span>
@@ -136,19 +197,7 @@ const Kitchen = () => {
                     </div>
                 </div>
 
-                <ul className="ml-4 list-disc text-sm text-gray-700 mb-3 space-y-1">
-                   {orden.items && orden.items.map((item) => (
-                      <li key={item.id}>
-                        <span className="font-bold">{item.cantidad}x</span> {item.producto_nombre || `Producto ${item.producto_id}`}
-                      </li>
-                   ))}
-                </ul>
-
-                {orden.observacion && (
-                    <div className="bg-white p-2 rounded text-xs text-red-600 border border-red-100 mb-3 italic font-bold">
-                        📝 {orden.observacion}
-                    </div>
-                )}
+                <OrderItemsList items={orden.items} observacion={orden.observacion} orderId={orden.id} />
 
                 <button
                   onClick={() => avanzarEstado(orden)}
@@ -161,7 +210,7 @@ const Kitchen = () => {
           </div>
         </div>
 
-        {/* --- COLUMNA 3: FINALIZADOS (Estilo Original Verde) --- */}
+        {/* --- COLUMNA 3: FINALIZADOS --- */}
         <div className="flex-1 w-full bg-white rounded-lg shadow-md p-4 border-t-4 border-green-500">
           <h2 className="text-xl font-bold mb-4 text-gray-700 flex justify-between items-center">
              <span>✅ Listos</span>
