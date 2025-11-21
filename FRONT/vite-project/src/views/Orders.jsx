@@ -101,11 +101,13 @@ const Orders = () => {
           >
             🗺️ Ver Mesas
           </button>
+
+          {/* Botón de Facturas con ruta /Billing (capitalizada según tu referencia) */}
           <button
             onClick={goToBilling}
             className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]"
           >
-            🧾 Historial de Facturas
+            🧾 Facturas
           </button>
         </div>
 
