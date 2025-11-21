@@ -44,14 +44,22 @@ const GenerarFactura = () => {
       cedula: "", nombre: "", direccion: "", telefono: ""
   });
 
-  // --- 1. CARGA DE PEDIDOS ---
+ // --- 1. CARGA DE PEDIDOS (CORREGIDO) ---
   const obtenerPedidos = useCallback(async () => {
       setLoadingPedidos(true);
       try {
-          const response = await axios.get(`${API_PEDIDOS}/?estado=PREPARADO`);
+          // 🔧 CAMBIO AQUÍ:
+          // Antes buscabas '?estado=PREPARADO'. 
+          // Ahora buscamos 'CERRADO' porque ese es el estado que pusimos en la pantalla anterior.
+          // Nota: Si quisieras ver ambos, tendrías que manejarlo en el backend o filtrar en el frontend.
+          const response = await axios.get(`${API_PEDIDOS}/?estado=CERRADO`);
           
           if (Array.isArray(response.data)) {
+              // Opcional: Filtrar extra por si acaso el backend devuelve de más
+              // const pedidosPorCobrar = response.data.filter(p => p.estado_pedido === 'CERRADO');
+              
               setListaPedidos(response.data);
+              
               if (response.data.length === 0) {
                   setFormPago(prev => ({ ...prev, pedidoId: "" }));
               }

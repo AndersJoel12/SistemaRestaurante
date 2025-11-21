@@ -3,14 +3,14 @@ import axios from "axios";
 import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
 
-// Usamos 127.0.0.1 para evitar errores de CORS
 const API_URL = "http://127.0.0.1:8000/api/pedidos";
 
-// Definimos los estados clave
+// 🔧 CORRECCIÓN 1: Unificamos los nombres.
+// Si tu backend usa "CERRADO" en la base de datos, aquí debemos enviar "CERRADO".
 const ESTADOS = {
-  PREPARADO: "PREPARADO", // 🚨 Cocina terminó -> Mesero debe entregar
-  ENTREGADO: "ENTREGADO", // ✅ En mesa -> Botón cerrar disponible
-  SERVIDO: "SERVIDO",     // 🏁 Orden cerrada/servida
+  PREPARADO: "PREPARADO",
+  ENTREGADO: "ENTREGADO",
+  SERVIDO: "CERRADO", // Cambiado de "SERVIDO" a "CERRADO" para coincidir con tu filtro y probablemente tu BD
 };
 
 const Orders = () => {
@@ -23,10 +23,9 @@ const Orders = () => {
     try {
       const response = await axios.get(`${API_URL}/`);
       
-      // Filtramos: Traemos todo MENOS lo que ya se cobró (CERRADO)
-      const activeOrders = response.data.filter(o => o.estado_pedido !== 'CERRADO');
+      // Nota: Aquí usabas 'CERRADO', por eso asumí que ese es el valor correcto en la BD
+      const activeOrders = response.data.filter(o => o.estado_pedido !== ESTADOS.SERVIDO);
 
-      // Ordenamos: Los PREPARADO primero (Prioridad Alta)
       activeOrders.sort((a, b) => {
         if (a.estado_pedido === ESTADOS.PREPARADO && b.estado_pedido !== ESTADOS.PREPARADO) return -1;
         if (a.estado_pedido !== ESTADOS.PREPARADO && b.estado_pedido === ESTADOS.PREPARADO) return 1;
@@ -47,7 +46,7 @@ const Orders = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- 2. ACCIÓN: ENTREGAR (PREPARADO -> ENTREGADO) ---
+  // --- 2. ENTREGAR PEDIDO ---
   const entregarPedido = async (id) => {
     try {
       await axios.patch(`${API_URL}/${id}/`, {
@@ -59,25 +58,34 @@ const Orders = () => {
         )
       );
     } catch (err) {
+      // 🔧 MEJORA: Ver el error real del servidor
+      console.error("Error entregando:", err.response?.data || err.message);
       alert("Error al marcar como entregado.");
     }
   };
 
-  // --- 3. ACCIÓN: CERRAR ORDEN (ENTREGADO -> SERVIDO) ---
-  // Este es el botón que querías de vuelta
+  // --- 3. CERRAR ORDEN (Aquí estaba el error) ---
   const closeOrder = async (id) => {
     try {
+      // Ahora enviamos "CERRADO" (o lo que valga ESTADOS.SERVIDO)
+      console.log(`Intentando cerrar orden ${id} con estado: ${ESTADOS.SERVIDO}`); // Log para depurar
+
       await axios.patch(`${API_URL}/${id}/`, {
-        estado_pedido: ESTADOS.SERVIDO,
+        estado_pedido: ESTADOS.SERVIDO, 
       });
+
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === id ? { ...order, estado_pedido: ESTADOS.SERVIDO } : order
         )
       );
     } catch (err) {
-      console.error("Error cerrando orden:", err);
-      alert("Error al cerrar la orden.");
+      // 🔧 DIAGNÓSTICO PROFUNDO:
+      // Esto imprimirá en la consola (F12) exactamente qué le molestó a Django.
+      console.error("❌ Error cerrando orden DETALLADO:", err.response?.data);
+      console.error("Status code:", err.response?.status);
+      
+      alert(`Error al cerrar: ${JSON.stringify(err.response?.data || "Error desconocido")}`);
     }
   };
 
@@ -88,11 +96,11 @@ const Orders = () => {
       await axios.delete(`${API_URL}/${id}/`);
       setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id));
     } catch (err) {
+      console.error("Error cancelando:", err.response?.data);
       alert("Error al cancelar.");
     }
   };
 
-  // Navegación
   const goToTables = () => navigate("/tables");
   const goToBilling = () => navigate("/billing");
 
@@ -130,6 +138,7 @@ const Orders = () => {
           {orders.map((orden) => {
             const isPreparado = orden.estado_pedido === ESTADOS.PREPARADO;
             const isEntregado = orden.estado_pedido === ESTADOS.ENTREGADO;
+            // Actualizamos la comparación también aquí
             const isServido = orden.estado_pedido === ESTADOS.SERVIDO;
 
             return (
@@ -140,10 +149,10 @@ const Orders = () => {
                   hover:scale-[1.02] hover:shadow-2xl hover:rotate-1
                   ${
                     isPreparado
-                      ? "border-yellow-500 bg-gradient-to-r from-red-700 to-red-900 text-yellow-100" // Estilo LISTO
+                      ? "border-yellow-500 bg-gradient-to-r from-red-700 to-red-900 text-yellow-100"
                       : isServido 
-                        ? "border-green-600 bg-green-50 text-green-900 opacity-80" // Estilo SERVIDO
-                        : "border-red-600 bg-white text-red-800" // Estilo NORMAL (Entregado)
+                        ? "border-green-600 bg-green-50 text-green-900 opacity-80"
+                        : "border-red-600 bg-white text-red-800"
                   }
                 `}
               >
@@ -178,9 +187,6 @@ const Orders = () => {
                       <p className={`text-lg font-bold ${isPreparado ? "text-yellow-200" : "text-red-700"}`}>
                         Mesa: <span className="ml-1">{orden.mesa_id}</span>
                       </p>
-                      <button onClick={goToTables} className={`text-xs font-semibold px-3 py-1 rounded-full border transition hover:shadow-md ${isPreparado ? "bg-yellow-400 text-red-900 border-yellow-400 hover:bg-yellow-500" : "bg-red-50 text-red-700 border-red-300 hover:bg-red-100"}`}>
-                        Ver Mesas 🗺️
-                      </button>
                     </div>
                   )}
                 </div>
@@ -202,7 +208,6 @@ const Orders = () => {
                 {/* --- BOTONES DE ACCIÓN --- */}
                 <div className="mt-6 flex justify-end gap-3">
                   
-                  {/* 1. SI ESTÁ PREPARADO: Botón LLEVAR A MESA */}
                   {isPreparado && (
                     <button
                       onClick={() => entregarPedido(orden.id)}
@@ -212,25 +217,21 @@ const Orders = () => {
                     </button>
                   )}
 
-                  {/* 2. SI ESTÁ ENTREGADO: Botón CERRAR ORDEN (Lo que pediste) */}
                   {isEntregado && (
-                      /* Botón de CERRAR ORDEN (Servido) (Solo si NO está SERVIDO) */
                   <button
                     onClick={() => closeOrder(orden.id)}
                     className="px-5 py-2 bg-yellow-600 text-red-900 font-bold rounded-full shadow-lg hover:bg-yellow-700 transition transform hover:-translate-y-1 active:scale-95 border-b-4 border-yellow-800 flex items-center gap-2"
                   >
-                    ✅ Cerrar Orden (Servido)
+                    ✅ Cerrar Orden
                   </button>
                   )}
 
-                  {/* 3. SI YA ESTÁ SERVIDO (Feedback visual) */}
                   {isServido && (
                     <span className="px-4 py-2 bg-green-100 text-green-700 font-bold rounded-lg border border-green-200 cursor-default">
-                      🏁 Servido
+                      🏁 Servido / Cerrado
                     </span>
                   )}
 
-                  {/* Botón Cancelar */}
                   <button
                     onClick={() => cancelOrder(orden.id)}
                     className="px-5 py-2 bg-gray-500 text-white font-bold rounded-full shadow-lg hover:bg-gray-700 transition transform hover:-translate-y-1 active:scale-95 border-b-4 border-gray-800 flex items-center gap-2"

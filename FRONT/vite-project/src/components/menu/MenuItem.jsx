@@ -132,7 +132,7 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
       {/* Imagen */}
       <div className="mb-2">
         <img
-          src="https://placehold.co/300x160/ef4444/ffffff?text=Plato%20No%20Image"
+          src={dish.imagen} /* "https://placehold.co/300x160/ef4444/ffffff?text=Plato%20No%20Image" */
           alt={dish.nombre}
           className="w-full h-36 sm:h-40 object-cover rounded-lg aspect-[3/2]"
         />
