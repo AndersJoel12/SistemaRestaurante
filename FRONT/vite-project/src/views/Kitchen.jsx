@@ -110,6 +110,7 @@ const Kitchen = () => {
   const finalizados = orders.filter((o) => o.estado_pedido === ESTADOS.LISTO);
 
   const OrderItemsList = ({ items, observacion }) => {
+    console.log("🔍 Renderizando items:", items);
     if (!items || items.length === 0)
       return <div className="text-red-500 text-xs">Sin items</div>;
     return (
@@ -168,7 +169,7 @@ const Kitchen = () => {
                   </span>
                 </div>
                 <OrderItemsList
-                  items={orden.items}
+                  items={orden.items_detalle}
                   observacion={orden.observacion}
                 />
 
@@ -216,7 +217,7 @@ const Kitchen = () => {
                   </div>
                 </div>
                 <OrderItemsList
-                  items={orden.items}
+                  items={orden.items_detalle}
                   observacion={orden.observacion}
                 />
 
@@ -271,7 +272,7 @@ const Kitchen = () => {
                 </div>
 
                 <OrderItemsList
-                  items={orden.items}
+                  items={orden.items_detalle}
                   observacion={orden.observacion}
                 />
 

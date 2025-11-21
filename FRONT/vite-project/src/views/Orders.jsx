@@ -142,6 +142,9 @@ const Orders = () => {
             // Actualizamos la comparación también aquí
             const isServido = orden.estado_pedido === ESTADOS.SERVIDO;
 
+            console.log(`--- Orden #${orden.id} ---`);
+            console.log("Valor de orden.items:", orden.items);
+
             return (
               <div
                 key={orden.id}
@@ -184,6 +187,7 @@ const Orders = () => {
                     <span className="uppercase font-bold">{orden.estado_pedido}</span>
                   </p>
                   {orden.mesa_id && (
+                    console.log(orden.mesa_id),
                     <div className="flex items-center gap-4">
                       <p className={`text-lg font-bold ${isPreparado ? "text-yellow-200" : "text-red-700"}`}>
                         Mesa: <span className="ml-1">{orden.mesa_id}</span>
@@ -195,7 +199,8 @@ const Orders = () => {
                 {/* Lista de productos */}
                 <ul className={`p-3 rounded-lg text-sm space-y-2 ${isPreparado ? "bg-red-800 text-yellow-200" : "bg-red-50 text-red-700"}`}>
                   <p className={`font-semibold text-xs mb-1 ${isPreparado ? "text-yellow-400" : "text-red-500"}`}>ITEMS DEL PEDIDO:</p>
-                  {orden.items && orden.items.map((it, index) => (
+
+                  {orden.items_detalle && orden.items_detalle.map((it, index) => (
                     <li key={index} className="flex justify-between items-center">
                       <span className="flex items-center">
                         <span className={`font-bold mr-2 text-base ${isPreparado ? "text-yellow-300" : "text-red-600"}`}>{it.cantidad}x</span>

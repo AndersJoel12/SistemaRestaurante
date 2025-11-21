@@ -23,11 +23,16 @@ class ProductoPedidoSerializer(serializers.ModelSerializer):
         queryset=Producto.objects.filter(disponible=True),
         write_only=True
     )
+    producto_nombre = serializers.CharField(
+        source='producto.nombre',
+        read_only=True
+    )
+
 
     class Meta:
         model = ProductoPedido
         fields = [
-            'id', 'producto_id', 'cantidad', 'precio_unit', 
+            'id', 'producto_id','producto_nombre' ,'cantidad', 'precio_unit', 
             'observacion', 'subtotal', 'estado'
         ]
         read_only_fields = ['id', 'precio_unit', 'subtotal']
@@ -39,6 +44,7 @@ class ProductoPedidoSerializer(serializers.ModelSerializer):
 
 class PedidoSerializer(serializers.ModelSerializer):
     items = ProductoPedidoSerializer(many=True, write_only=True)
+    items_detalle = ProductoPedidoSerializer(many=True, read_only=True, source='items')
     total_items = serializers.SerializerMethodField(read_only=True)
 
     mesa_id = serializers.PrimaryKeyRelatedField(
@@ -65,7 +71,8 @@ class PedidoSerializer(serializers.ModelSerializer):
             'observacion', 
             'CostoTotal', 
             'estado_pedido', 
-            'items', 
+            'items',
+            'items_detalle', 
             'total_items' # COMENTADO
         ]
         read_only_fields = ['id', 'fecha', 'hora', 'CostoTotal']
