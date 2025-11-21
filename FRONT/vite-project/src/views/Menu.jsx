@@ -169,7 +169,7 @@ const Menu = () => {
         mesa_id: targetTableId, 
         empleado_id: userId, 
         observacion: "",
-        estado_pedido: "ABIERTO",
+        estado_pedido: "RECIBIDO",
         items: activeOrder.map((it) => ({
           producto_id: it.id,
           cantidad: it.quantity,
