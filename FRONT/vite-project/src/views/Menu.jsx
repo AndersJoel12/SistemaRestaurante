@@ -37,10 +37,20 @@ const Menu = () => {
   // --- VERIFICAR MESA ACTIVA ---
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
+
     if (storedMesa) {
-      const mesa = JSON.parse(storedMesa);
-      setMesaActiva(mesa);
-      showNotification("info", `Mesa ${mesa.number} cargada.`);
+      try {
+        const mesa = JSON.parse(storedMesa);
+        setMesaActiva(mesa);
+        showNotification("info", `Mesa ${mesa.number} cargada.`);
+      } catch (e) {
+        console.error("Error al parsear los datos de la mesa activa:", e);
+        setMesaActiva(null);
+        showNotification(
+          "error",
+          "Error al leer los datos de la mesa. Reinicia sesión de mesa."
+        );
+      }
     } else {
       setMesaActiva(null);
       showNotification(
