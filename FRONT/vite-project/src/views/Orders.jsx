@@ -129,18 +129,12 @@ const Orders = () => {
           {orders.map((orden) => {
             const isPreparado = orden.estado_pedido === ESTADOS.PREPARADO;
             const isEntregado = orden.estado_pedido === ESTADOS.ENTREGADO;
-<<<<<<< HEAD
             // Actualizamos la comparación también aquí
-            const isServido = orden.estado_pedido === ESTADOS.SERVIDO;
+            const isServido = orden.estado_pedido === ESTADOS.POR_FACTURAR;
 
             console.log(`--- Orden #${orden.id} ---`);
             console.log("Valor de orden.items:", orden.items);
 
-=======
-            // Cuando la orden es "POR_FACTURAR", activamos tu estilo "Servido"
-            const isServido = orden.estado_pedido === ESTADOS.POR_FACTURAR; 
-            
->>>>>>> 7e3ca5c90ae8daa75889b88c824ff245bde1cd4e
             return (
               <div
                 key={orden.id}
@@ -192,13 +186,9 @@ const Orders = () => {
 
                 {/* Items */}
                 <ul className={`p-3 rounded-lg text-sm space-y-2 ${isPreparado ? "bg-red-800 text-yellow-200" : "bg-red-50 text-red-700"}`}>
-<<<<<<< HEAD
                   <p className={`font-semibold text-xs mb-1 ${isPreparado ? "text-yellow-400" : "text-red-500"}`}>ITEMS DEL PEDIDO:</p>
 
                   {orden.items_detalle && orden.items_detalle.map((it, index) => (
-=======
-                  {orden.items && orden.items.map((it, index) => (
->>>>>>> 7e3ca5c90ae8daa75889b88c824ff245bde1cd4e
                     <li key={index} className="flex justify-between items-center">
                       <span className="flex items-center">
                         <span className={`font-bold mr-2 text-base ${isPreparado ? "text-yellow-300" : "text-red-600"}`}>{it.cantidad}x</span>
