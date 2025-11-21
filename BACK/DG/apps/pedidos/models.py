@@ -40,6 +40,7 @@ class Pedido(BaseModel):
         ('PREPARADO', 'Listo para Servir'),
         ('CERRADO', 'Cerrado (Pagado)'),
         ('ENTREGADO', 'Entregado al Cliente'),
+        ('POR_FACTURAR', 'Por Facturar'),
         ('ANULADO', 'Anulado'),
     )
     
