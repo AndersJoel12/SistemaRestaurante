@@ -4,27 +4,34 @@ from rest_framework.response import Response
 
 # Modelos
 from apps.pedidos.models import Mesa, Pedido, ProductoPedido
-# Serializadores (Asegúrate de importar ProductoPedidoSerializer)
+# Serializadores
 from .serializers import MesaSerializer, PedidoSerializer, ProductoPedidoSerializer
-# Permisos (Si los usas)
+# Permisos
 from apps.users.api.permissions import IsAdministrador, IsMesero, IsCocina, IsOwner
 
 # --- 1. VISTA DE MESAS ---
 class MesaViewSet(viewsets.ModelViewSet):
     queryset = Mesa.objects.all().order_by('numero') 
     serializer_class = MesaSerializer
-    # Permisos abiertos para desarrollo
     permission_classes = [permissions.AllowAny] 
 
-# --- 2. VISTA DE PEDIDOS (Aquí estaba el problema del 405) ---
+# --- 2. VISTA DE PEDIDOS ---
 class PedidoViewSet(viewsets.ModelViewSet):
     serializer_class = PedidoSerializer
-    # ⚠️ ELIMINADO: http_method_names = [...]  <-- ESTO CAUSABA EL ERROR 405
-    # Al quitarlo, ModelViewSet permite GET, POST, PUT, PATCH y DELETE por defecto.
 
     def get_queryset(self):
-        # Filtramos para no traer los pedidos viejos 'CERRADO'
-        return Pedido.objects.exclude(estado_pedido='CERRADO').order_by('-fecha', '-hora')
+        # 1. Base: Traemos todo MENOS lo cerrado/cobrado (Historial limpio)
+        queryset = Pedido.objects.exclude(estado_pedido='CERRADO').order_by('-fecha', '-hora')
+
+        # 2. 🔥 FILTRO DINÁMICO (NUEVO)
+        # Capturamos el parámetro de la URL (ej: ?estado=PREPARADO)
+        estado_param = self.request.query_params.get('estado')
+
+        if estado_param:
+            # 3. Si existe el parámetro, filtramos la lista base
+            queryset = queryset.filter(estado_pedido=estado_param)
+        
+        return queryset
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -38,11 +45,8 @@ class PedidoViewSet(viewsets.ModelViewSet):
         )
 
     def get_permissions(self):
-        # Para desarrollo, dejémoslo abierto. 
-        # Cuando vayas a producción, descomenta la lógica de roles.
         return [permissions.AllowAny()]
 
-    # Acción extra por si quieres usarla, pero tu frontend usa PATCH directo, que ahora funcionará.
     @action(detail=True, methods=['patch'])
     def marcar_listo(self, request, pk=None):
         pedido = self.get_object()
@@ -53,14 +57,10 @@ class PedidoViewSet(viewsets.ModelViewSet):
 # --- 3. VISTA DE PRODUCTOS DEL PEDIDO ---
 class ProductoPedidoViewSet(viewsets.ModelViewSet):
     queryset = ProductoPedido.objects.all().order_by('id')
-    # 🔥 CORRECCIÓN CRÍTICA: Antes tenías el Modelo aquí, debe ser el Serializer
     serializer_class = ProductoPedidoSerializer 
 
     def get_permissions(self):
         return [permissions.AllowAny()]
         
     def partial_update(self, request, *args, **kwargs):
-        # Lógica de seguridad opcional:
-        # Si quieres validar roles aquí, asegúrate de enviar el TOKEN desde el frontend.
-        # Por ahora, delegamos al padre para que funcione el flujo.
         return super().partial_update(request, *args, **kwargs)

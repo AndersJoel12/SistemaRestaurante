@@ -18,7 +18,7 @@ const METODOS_PAGO = [
 const GenerarFactura = () => {
   // --- ESTADOS UI ---
   const [loading, setLoading] = useState(false);
-  const [loadingPedidos, setLoadingPedidos] = useState(false); // Estado exclusivo para carga de pedidos
+  const [loadingPedidos, setLoadingPedidos] = useState(false); 
   const [message, setMessage] = useState(null);
   const [success, setSuccess] = useState(false);
   
@@ -41,14 +41,18 @@ const GenerarFactura = () => {
       cedula: "", nombre: "", direccion: "", telefono: ""
   });
 
-  // --- 1. FUNCIÓN PARA CARGAR PEDIDOS (REUTILIZABLE) ---
+  // --- 1. FUNCIÓN PARA CARGAR PEDIDOS (OPTIMIZADA) ---
   const obtenerPedidos = useCallback(async () => {
       setLoadingPedidos(true);
       try {
-          const response = await axios.get(`${API_PEDIDOS}/`);
+          // 🔧 CORRECCIÓN CRÍTICA:
+          // Usamos el filtro del Backend. Solo traemos lo que está 'PREPARADO'.
+          const response = await axios.get(`${API_PEDIDOS}/?estado=PREPARADO`);
+          
           if (Array.isArray(response.data)) {
               setListaPedidos(response.data);
-              // Si la lista está vacía, limpiamos la selección actual
+              
+              // Si no hay pedidos listos, limpiamos cualquier selección previa
               if (response.data.length === 0) {
                   setFormPago(prev => ({ ...prev, pedidoId: "", montoVisual: 0 }));
               }
@@ -72,7 +76,8 @@ const GenerarFactura = () => {
       const idSeleccionado = e.target.value;
       const pedidoEncontrado = listaPedidos.find(p => p.id.toString() === idSeleccionado);
       
-      const monto = pedidoEncontrado ? pedidoEncontrado.CostoTotal : 0;
+      // Convertimos a float para asegurar cálculos matemáticos correctos
+      const monto = pedidoEncontrado ? parseFloat(pedidoEncontrado.CostoTotal) : 0;
 
       setFormPago({
           ...formPago,
@@ -131,11 +136,11 @@ const GenerarFactura = () => {
           setSuccess(true);
           setMessage({ type: "success", text: "¡Factura generada y Mesa liberada!" });
 
-          // --- ACTUALIZAR LISTA ---
-          // Eliminamos el pedido procesado de la lista local
+          // --- ACTUALIZAR LISTA LOCALMENTE ---
+          // Eliminamos el pedido procesado de la lista visualmente para feedback instantáneo
           setListaPedidos(prev => prev.filter(p => p.id !== parseInt(formPago.pedidoId)));
           
-          // Reset automático
+          // Reset automático después de 3 segundos
           setTimeout(() => {
               setSuccess(false);
               setFormPago({
@@ -144,7 +149,7 @@ const GenerarFactura = () => {
               setRequiereFactura(false);
               setDatosCliente({ cedula: "", nombre: "", direccion: "", telefono: "" });
               setMessage(null);
-              // Opcional: Volver a consultar al servidor por si hay nuevos pedidos
+              // Volvemos a consultar al servidor para asegurar consistencia
               obtenerPedidos(); 
           }, 3000);
 
@@ -231,7 +236,7 @@ const GenerarFactura = () => {
                             </option>
                             {listaPedidos.map((p) => (
                                 <option key={p.id} value={p.id}>
-                                    Pedido #{p.id} {p.mesa_id ? `- Mesa ${p.mesa_id}` : ''} - ${p.CostoTotal}
+                                    Pedido #{p.id} {p.mesa_id ? `- Mesa ${p.mesa_id}` : ''} - ${parseFloat(p.CostoTotal).toFixed(2)}
                                 </option>
                             ))}
                         </select>
@@ -243,7 +248,7 @@ const GenerarFactura = () => {
                     {listaPedidos.length === 0 && !loadingPedidos && (
                         <div className="mt-2 flex items-center gap-2 text-green-600 bg-green-50 p-2 rounded-lg text-xs font-bold border border-green-200">
                             <span>✨</span>
-                            <span>¡Todo al día! No hay pedidos pendientes de cobro.</span>
+                            <span>¡Todo al día! No hay pedidos "Preparados" pendientes.</span>
                         </div>
                     )}
                 </div>
@@ -265,7 +270,7 @@ const GenerarFactura = () => {
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">$</span>
                         <input 
-                            type="number" 
+                            type="text" 
                             readOnly
                             value={(parseFloat(formPago.montoVisual || 0) + parseFloat(formPago.impuesto || 0) - parseFloat(formPago.descuento || 0)).toFixed(2)}
                             className="w-full pl-10 pr-4 py-4 text-4xl font-extrabold text-gray-800 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 transition-colors bg-gray-50"
