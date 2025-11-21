@@ -27,7 +27,7 @@ const Menu = () => {
 
   const [availableTables, setAvailableTables] = useState([]);
   const [showTableModal, setShowTableModal] = useState(false);
-  
+
   // 🔥 NUEVO ESTADO: Para controlar el modal de "Llamar al mesero"
   const [showWaiterModal, setShowWaiterModal] = useState(false);
 
@@ -70,8 +70,10 @@ const Menu = () => {
   const fetchTables = async () => {
     try {
       const response = await axios.get(URL_MESAS);
-      const freeTables = response.data.filter(table => 
-        table.estado.toLowerCase() === 'libre' || table.estado.toLowerCase() === 'disponible'
+      const freeTables = response.data.filter(
+        (table) =>
+          table.estado.toLowerCase() === "libre" ||
+          table.estado.toLowerCase() === "disponible"
       );
       setAvailableTables(freeTables);
     } catch (error) {
@@ -94,8 +96,8 @@ const Menu = () => {
       ]);
       setDishes(dishResponse.data);
     } catch (error) {
-        console.error("❌ Error menú:", error);
-        setApiError("Error de conexión al cargar menú.");
+      console.error("❌ Error menú:", error);
+      setApiError("Error de conexión al cargar menú.");
     } finally {
       setLoading(false);
     }
@@ -144,9 +146,9 @@ const Menu = () => {
   const executeOrderSubmission = async (targetTableId, targetTableNumber) => {
     // ... (Tu lógica de envío original se mantiene igual aquí)
     // Para ahorrar espacio en el chat, asumo que este bloque no cambia
-    // Si necesitas que lo repita, avísame. 
+    // Si necesitas que lo repita, avísame.
     // La lógica es la misma: token, payload, axios.post...
-    
+
     console.log(`🚀 Enviando a mesa ${targetTableNumber}...`);
     // (Simulación del código que ya tenías para enviar)
     // ...
@@ -230,12 +232,12 @@ const Menu = () => {
     // 🛑 INTERCEPTOR MODIFICADO
     // Si no hay mesa, o es la mesa virtual 999...
     if (!mesaActiva || mesaActiva.number === "999" || mesaActiva.id === 999) {
-        console.warn("🛑 [INTERCEPTOR] Cliente sin mesa asignada.");
-        
-        // ANTES: fetchTables() y setShowTableModal(true)
-        // AHORA: Solo mostramos el mensaje de "Espera al mesero"
-        setShowWaiterModal(true); 
-        return;
+      console.warn("🛑 [INTERCEPTOR] Cliente sin mesa asignada.");
+
+      // ANTES: fetchTables() y setShowTableModal(true)
+      // AHORA: Solo mostramos el mensaje de "Espera al mesero"
+      setShowWaiterModal(true);
+      return;
     }
 
     // Si ya tiene mesa real (ej: escaneó un QR real), envía directo
@@ -305,37 +307,37 @@ const Menu = () => {
       {showWaiterModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[70]">
           <div className="bg-white rounded-xl shadow-2xl p-8 w-[90%] max-w-md text-center animate-bounce-in border-t-4 border-blue-500">
-            
             <div className="mb-6 flex justify-center">
-                <div className="bg-blue-100 p-4 rounded-full">
-                    {/* Ícono de campana o usuario */}
-                    <span className="text-4xl">🔔</span>
-                </div>
+              <div className="bg-blue-100 p-4 rounded-full">
+                {/* Ícono de campana o usuario */}
+                <span className="text-4xl">🔔</span>
+              </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                ¡Listo!
-            </h2>
-            
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">¡Listo!</h2>
+
             <p className="text-gray-600 text-lg mb-6">
-                Mantén esta pantalla abierta. Un mesero se acercará en breve para confirmar tu pedido y asignarte una mesa.
+              Mantén esta pantalla abierta. Un mesero se acercará en breve para
+              confirmar tu pedido y asignarte una mesa.
             </p>
 
             {/* Muestra el total para que el cliente sepa cuánto es */}
             <div className="bg-gray-100 p-4 rounded-lg mb-6">
-                <p className="text-sm text-gray-500">Total estimado</p>
-                <p className="text-xl font-bold text-green-600">
-                    ${activeOrder.reduce((acc, item) => acc + (item.precio * item.quantity), 0).toFixed(2)}
-                </p>
+              <p className="text-sm text-gray-500">Total estimado</p>
+              <p className="text-xl font-bold text-green-600">
+                $
+                {activeOrder
+                  .reduce((acc, item) => acc + item.precio * item.quantity, 0)
+                  .toFixed(2)}
+              </p>
             </div>
 
-            <button 
-                onClick={() => setShowWaiterModal(false)} 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+            <button
+              onClick={() => setShowWaiterModal(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
             >
-                Entendido, esperar
+              Entendido, esperar
             </button>
-
           </div>
         </div>
       )}

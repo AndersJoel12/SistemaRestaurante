@@ -12,7 +12,6 @@ function TablesView() {
    * Maneja la selección de una mesa activa y la guarda en sesión.
    * @param {object} mesaActiva - Objeto de la mesa seleccionada { id, number, capacity, ... }.
    */
-
   const handleNavigateToMenu = (mesaActiva) => {
     // 1. Validamos que el objeto tenga al menos la ID para ser útil
     if (!mesaActiva || !mesaActiva.id) {
@@ -23,16 +22,22 @@ function TablesView() {
     console.log(
       `✅ Mesa ${mesaActiva.number} guardada en sesión. Navegando al menú.`
     ); // 2. NAVEGACIÓN
-
     navigate("/menu");
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header />
-      <div className="container mx-auto">
+            <Header />     {" "}
+      {/* Contenedor Responsivo: 
+          max-w-7xl y mx-auto centran y limitan el contenido en pantallas grandes.
+          px-4, sm:px-6, lg:px-8 añaden un padding lateral adaptativo para móviles y desktop.
+          py-8 agrega espacio vertical para separar del header.
+      */}
+           {" "}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+               {" "}
         {/* TablesGrid ahora maneja la cuadrícula y la lógica de selección */}
-        <TablesGrid onNavigateToMenu={handleNavigateToMenu} />
+                <TablesGrid onNavigateToMenu={handleNavigateToMenu} />     {" "}
       </div>
          {" "}
     </div>
