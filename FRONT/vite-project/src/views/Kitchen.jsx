@@ -3,7 +3,6 @@ import axios from "axios";
 
 const API_PEDIDOS = "http://localhost:8000/api/pedidos";
 
-// Mantenemos tus estados
 const ESTADOS = {
   NUEVO: "ABIERTO",
   COCINANDO: "EN_ESPERA",
@@ -15,17 +14,14 @@ const Kitchen = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState(null);
 
-  // --- FORMATO DE HORA ---
   const formatTime = (time) => time ? time.substring(0, 5) : "--:--";
 
-  // --- CARGAR PEDIDOS CON LOGS ---
+  // --- CARGAR PEDIDOS ---
   const fetchOrders = useCallback(async () => {
     console.log("📡 [COCINA] Iniciando petición a API...");
     try {
       const response = await axios.get(`${API_PEDIDOS}/`);
-      
-      // 1. LOG DE LA RESPUESTA CRUDA
-      console.log("📦 [COCINA] Respuesta API (Raw Data):", response.data);
+      console.log("📦 [COCINA] Respuesta API:", response.data);
 
       if (Array.isArray(response.data)) {
         const kitchenOrders = response.data.filter(
@@ -35,22 +31,6 @@ const Kitchen = () => {
             o.estado_pedido === ESTADOS.LISTO
         );
         
-        // 2. LOG DE PEDIDOS FILTRADOS
-        console.log(`🍳 [COCINA] Pedidos filtrados (${kitchenOrders.length}):`, kitchenOrders);
-
-        // 3. LOG PROFUNDO DEL PRIMER PEDIDO (Para ver la estructura de los items)
-        if (kitchenOrders.length > 0) {
-            const primerPedido = kitchenOrders[0];
-            console.log("🔍 [INSPECCIÓN] Estructura del primer pedido:", primerPedido);
-            console.log("🔍 [INSPECCIÓN] ¿Existe campo 'items'?", primerPedido.items);
-            
-            if (primerPedido.items && primerPedido.items.length > 0) {
-                console.log("🔍 [INSPECCIÓN] Estructura de un item individual:", primerPedido.items[0]);
-            } else {
-                console.warn("⚠️ [ALERTA] El primer pedido NO tiene items o el array está vacío.");
-            }
-        }
-
         kitchenOrders.sort((a, b) => new Date(a.fecha + ' ' + a.hora) - new Date(b.fecha + ' ' + b.hora));
         setOrders(kitchenOrders);
         setError(null);
@@ -66,23 +46,21 @@ const Kitchen = () => {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  // --- AVANZAR ESTADO ---
   const avanzarEstado = async (orden) => {
-    console.log(`🔧 [ACCIÓN] Avanzando estado para Orden #${orden.id}. Estado actual: ${orden.estado_pedido}`);
+    console.log(`🔧 [ACCIÓN] Avanzando estado para Orden #${orden.id}`);
     
     let nuevoEstado = "";
     switch (orden.estado_pedido) {
       case ESTADOS.NUEVO: nuevoEstado = ESTADOS.COCINANDO; break;
       case ESTADOS.COCINANDO: nuevoEstado = ESTADOS.LISTO; break;
-      case ESTADOS.LISTO: nuevoEstado = ESTADOS.FINALIZADO; break;
+      // NOTA: Quitamos el caso de LISTO -> FINALIZADO aquí visualmente, 
+      // aunque la lógica exista, no la usaremos en la UI de cocina.
       default: return;
     }
 
     const copiaOriginal = [...orders];
-    if (nuevoEstado === ESTADOS.FINALIZADO) {
-        setOrders(prev => prev.filter(o => o.id !== orden.id));
-    } else {
-        setOrders(prev => prev.map(o => o.id === orden.id ? { ...o, estado_pedido: nuevoEstado } : o));
-    }
+    setOrders(prev => prev.map(o => o.id === orden.id ? { ...o, estado_pedido: nuevoEstado } : o));
 
     try {
         await axios.patch(`${API_PEDIDOS}/${orden.id}/`, { estado_pedido: nuevoEstado });
@@ -97,26 +75,16 @@ const Kitchen = () => {
   const pendientes = orders.filter(o => o.estado_pedido === ESTADOS.COCINANDO);
   const finalizados = orders.filter(o => o.estado_pedido === ESTADOS.LISTO);
 
-  // --- COMPONENTE DE LISTA CON LOGS INTERNOS ---
-  const OrderItemsList = ({ items, observacion, orderId }) => {
-    // Validamos si items existe
-    if (!items || items.length === 0) {
-        console.warn(`⚠️ [RENDER] Orden #${orderId} no tiene items para mostrar.`);
-        return <div className="text-red-500 text-xs">Sin items (Revisar consola)</div>;
-    }
+  // --- COMPONENTE DE LISTA ---
+  const OrderItemsList = ({ items, observacion }) => {
+    if (!items || items.length === 0) return <div className="text-red-500 text-xs">Sin items</div>;
 
     return (
       <>
         <ul className="ml-4 list-disc text-sm text-gray-700 mb-3 space-y-1">
           {items.map((item, idx) => {
-            // LOG PARA VER CADA ITEM AL RENDERIZARSE
-            // Esto nos dirá si las propiedades se llaman "producto_nombre", "nombre", "producto.nombre", etc.
-            // console.log(`📝 [ITEM RAW] Orden #${orderId} - Item ${idx}:`, item);
-
-            // Intentamos obtener el nombre de varias formas comunes para evitar fallos
-            const nombreProducto = item.producto_nombre || item.nombre || item.producto?.nombre || "Producto Desconocido";
+            const nombreProducto = item.producto_nombre || item.nombre || item.producto?.nombre || "Producto";
             const cantidad = item.cantidad || 1;
-
             return (
               <li key={item.id || idx}>
                 <span className="font-bold">{cantidad}x</span> {nombreProducto}
@@ -153,17 +121,13 @@ const Kitchen = () => {
           
           <div className="space-y-3">
             {nuevos.length === 0 && <p className="text-gray-400 text-center italic">Esperando comandas...</p>}
-            
             {nuevos.map((orden) => (
               <div key={orden.id} className="p-4 bg-gray-50 border border-gray-300 rounded-md shadow-sm border-l-4 border-l-blue-400">
                 <div className="flex justify-between mb-2 border-b border-gray-200 pb-2">
                     <span className="font-bold text-gray-800">#{orden.id} - Mesa {orden.mesa_id}</span>
                     <span className="font-mono text-gray-500 text-sm">{formatTime(orden.hora)}</span>
                 </div>
-                
-                {/* Pasamos el ID para el log */}
-                <OrderItemsList items={orden.items} observacion={orden.observacion} orderId={orden.id} />
-                
+                <OrderItemsList items={orden.items} observacion={orden.observacion} />
                 <button
                   onClick={() => avanzarEstado(orden)}
                   className="w-full bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200 font-bold py-2 px-4 rounded transition-colors flex justify-center items-center gap-2 text-sm"
@@ -181,10 +145,8 @@ const Kitchen = () => {
              <span>🔥 En Preparación</span>
              <span className="bg-yellow-200 text-yellow-800 text-sm px-2 py-1 rounded-full">{pendientes.length}</span>
           </h2>
-          
           <div className="space-y-3">
             {pendientes.length === 0 && <p className="text-gray-400 text-center italic">Nada en los fogones...</p>}
-            
             {pendientes.map((orden) => (
               <div key={orden.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-md shadow-sm relative hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start border-b border-yellow-200 pb-2 mb-2">
@@ -196,9 +158,7 @@ const Kitchen = () => {
                         <p className="font-bold text-gray-700">{formatTime(orden.hora)}</p>
                     </div>
                 </div>
-
-                <OrderItemsList items={orden.items} observacion={orden.observacion} orderId={orden.id} />
-
+                <OrderItemsList items={orden.items} observacion={orden.observacion} />
                 <button
                   onClick={() => avanzarEstado(orden)}
                   className="w-full mt-2 bg-green-100 text-green-700 border border-green-300 hover:bg-green-200 font-bold py-2 px-4 rounded transition-colors flex justify-center items-center gap-2"
@@ -210,7 +170,7 @@ const Kitchen = () => {
           </div>
         </div>
 
-        {/* --- COLUMNA 3: FINALIZADOS --- */}
+        {/* --- COLUMNA 3: LISTOS (Sin botón de cierre) --- */}
         <div className="flex-1 w-full bg-white rounded-lg shadow-md p-4 border-t-4 border-green-500">
           <h2 className="text-xl font-bold mb-4 text-gray-700 flex justify-between items-center">
              <span>✅ Listos</span>
@@ -219,7 +179,6 @@ const Kitchen = () => {
 
           <div className="space-y-3">
             {finalizados.length === 0 && <p className="text-gray-400 text-center italic">Nada pendiente de entrega.</p>}
-
             {finalizados.map((orden) => (
               <div key={orden.id} className="p-4 bg-green-50 border border-green-200 rounded-md shadow-sm opacity-90">
                 <div className="flex justify-between items-start border-b border-green-200 pb-2 mb-2">
@@ -229,17 +188,15 @@ const Kitchen = () => {
                     </div>
                     <span className="text-2xl">🍽️</span>
                 </div>
+                
+                {/* Muestra los items para que el mesero sepa qué llevar, pero sin botón */}
+                <OrderItemsList items={orden.items} observacion={orden.observacion} />
 
-                <div className="text-center py-2">
-                    <p className="text-sm text-green-800 font-medium">¡Esperando al mesero!</p>
+                <div className="mt-3 text-center py-2 bg-green-100 rounded border border-green-200">
+                    <p className="text-sm text-green-800 font-bold animate-pulse">
+                        🔔 ¡ESPERANDO AL MESERO!
+                    </p>
                 </div>
-
-                <button
-                  onClick={() => avanzarEstado(orden)}
-                  className="w-full mt-2 bg-gray-200 text-gray-700 border border-gray-300 hover:bg-gray-300 font-bold py-2 px-4 rounded transition-colors text-xs"
-                >
-                  Marcar como Entregado (X)
-                </button>
               </div>
             ))}
           </div>
