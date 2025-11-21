@@ -50,8 +50,9 @@ const Orders = () => {
   const entregarPedido = async (id) => {
     try {
       await axios.patch(`${API_URL}/${id}/`, {
-        estado_pedido: ESTADOS.ENTREGADO,
+        
       });
+
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === id ? { ...order, estado_pedido: ESTADOS.ENTREGADO } : order

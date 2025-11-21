@@ -21,7 +21,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # 1. Base: Traemos todo MENOS lo cerrado/cobrado (Historial limpio)
-        queryset = Pedido.objects.exclude(estado_pedido='CERRADO').order_by('-fecha', '-hora')
+        queryset = Pedido.objects.order_by('-fecha', '-hora')
 
         # 2. 🔥 FILTRO DINÁMICO (NUEVO)
         # Capturamos el parámetro de la URL (ej: ?estado=PREPARADO)
@@ -50,7 +50,7 @@ class PedidoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'])
     def marcar_listo(self, request, pk=None):
         pedido = self.get_object()
-        pedido.estado_pedido = 'PREPARADO'
+        pedido.estado_pedido = 'CERRADO'
         pedido.save()
         return Response({'message': 'Pedido marcado como PREPARADO.'}, status=status.HTTP_200_OK)
 
