@@ -39,6 +39,7 @@ class Pedido(BaseModel):
         ('EN_ESPERA', 'En Espera (Enviado a cocina)'),
         ('PREPARADO', 'Listo para Servir'),
         ('CERRADO', 'Cerrado (Pagado)'),
+        ('ENTREGADO', 'Entregado al Cliente'),
         ('ANULADO', 'Anulado'),
     )
     
