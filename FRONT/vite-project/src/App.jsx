@@ -117,8 +117,15 @@ function App() {
 
           {/* Default */}
           <Route path="*" element={<Home />} />
+
           <Route path="/billing" element={<Billing />} />
-          <Route path="/manage-billing" element={<ManageBilling />} />
+
+          <Route path="/manage-billing" element=
+          { <ProtectedRoute roles={["administrador", "admin"]}>
+              <ManageBilling />
+            </ProtectedRoute>} 
+          />
+
         </Routes>
       </Suspense>
     </AuthProvider>

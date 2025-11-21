@@ -3,6 +3,7 @@ import axios from "axios";
 // Asumiendo que estos componentes existen
 import MessageAlert from "../components/MessageAlert.jsx";
 import Header from "../components/Header.jsx";
+import NavBar from "../components/Navigation.jsx";
 
 // --- CONFIGURACIÓN ---
 const API_URL = "http://localhost:8000/api/facturas";
@@ -574,6 +575,7 @@ const GestionFacturacion = () => {
           </tbody>
         </table>
       </div>
+      <NavBar />
     </div>
   );
 };

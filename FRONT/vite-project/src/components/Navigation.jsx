@@ -37,6 +37,10 @@ function NavBar() {
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Mesas</span>
           </Link>
 
+          <Link to="/manage-billing" className="group flex flex-col items-center transition duration-300">
+            <span className="group-hover:text-white group-hover:scale-110 transition-transform">Facturación</span>
+          </Link>
+
         </div>
       </div>
     </nav>
