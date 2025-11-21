@@ -17,26 +17,18 @@ class MesaSerializer(serializers.ModelSerializer):
         return value
 
 class ProductoPedidoSerializer(serializers.ModelSerializer):
-    # 1. AGREGADO: Para que el frontend vea el nombre del plato (ej: "Hamburguesa")
-    producto_nombre = serializers.ReadOnlyField(source='producto.nombre')
-    
     producto_id = serializers.PrimaryKeyRelatedField(
         source='producto',
+        # CORREGIDO: 'disponible' en lugar de 'disponibilidad'
         queryset=Producto.objects.filter(disponible=True),
-        write_only=True # El ID solo se usa al escribir (enviar pedido)
+        write_only=True
     )
 
     class Meta:
         model = ProductoPedido
         fields = [
-            'id', 
-            'producto_id', 
-            'producto_nombre', # <--- Importante para tu lista en React
-            'cantidad', 
-            'precio_unit', 
-            'observacion', 
-            'subtotal', 
-            'estado'
+            'id', 'producto_id', 'cantidad', 'precio_unit', 
+            'observacion', 'subtotal', 'estado'
         ]
         read_only_fields = ['id', 'precio_unit', 'subtotal']
 
@@ -46,11 +38,7 @@ class ProductoPedidoSerializer(serializers.ModelSerializer):
         return value
 
 class PedidoSerializer(serializers.ModelSerializer):
-    # 2. CORREGIDO: Quitamos 'write_only=True' para que React pueda LEER la lista.
-    # IMPORTANTE: Esto asume que en tu models.py la relación tiene related_name='items'
-    # o que el campo se llama 'items'. Si usas el default, abajo te dejo una nota.
-    items = ProductoPedidoSerializer(many=True) 
-    
+    items = ProductoPedidoSerializer(many=True, write_only=True)
     total_items = serializers.SerializerMethodField(read_only=True)
 
     mesa_id = serializers.PrimaryKeyRelatedField(
@@ -60,8 +48,11 @@ class PedidoSerializer(serializers.ModelSerializer):
 
     empleado_id = serializers.PrimaryKeyRelatedField(
         source='empleado',
-        queryset=Empleado.objects.filter(), # Puedes filtrar is_active=True si quieres
+        queryset=Empleado.objects.filter(),
     )
+    
+    # DEJA ESTO COMENTADO POR AHORA (Evita el error 500 anterior)
+    # total_items = serializers.SerializerMethodField()
 
     class Meta:
         model = Pedido
@@ -75,23 +66,18 @@ class PedidoSerializer(serializers.ModelSerializer):
             'CostoTotal', 
             'estado_pedido', 
             'items', 
-            'total_items'
+            'total_items' # COMENTADO
         ]
         read_only_fields = ['id', 'fecha', 'hora', 'CostoTotal']
 
-    # 3. DESCOMENTADO Y CORREGIDO
+        #FUNCION COMENTADA POR AHORA
     def get_total_items(self, obj):
-        # Intentamos obtener el count de la relación inversa
         if hasattr(obj, 'items'):
             return obj.items.count()
-        # Fallback por si se llama diferente (ej: productopedido_set)
-        if hasattr(obj, 'productopedido_set'):
-            return obj.productopedido_set.count()
         return 0
 
     @transaction.atomic
     def create(self, validated_data):
-        # Extraemos los items del payload
         items_data = validated_data.pop('items')
             
         if not items_data:
@@ -100,7 +86,9 @@ class PedidoSerializer(serializers.ModelSerializer):
         mesa_instance = validated_data.pop('mesa') 
         empleado_instance = validated_data.pop('empleado')
 
-        # Crear el Pedido Padre
+            #if mesa_instance and mesa_instance.estado == False: # Ajusta 'OCUPADA' a tu valor real
+            #    raise serializers.ValidationError({"mesa_id": "La mesa ya está ocupada."})
+
         pedido = Pedido.objects.create(
             mesa=mesa_instance, 
             empleado=empleado_instance, 
@@ -110,7 +98,6 @@ class PedidoSerializer(serializers.ModelSerializer):
         total_cost = Decimal('0.00')
         productos_para_crear = []
 
-        # Procesar cada item
         for item_data in items_data:
             producto_instance = item_data.pop('producto') 
             cantidad = item_data['cantidad']
@@ -128,16 +115,18 @@ class PedidoSerializer(serializers.ModelSerializer):
                     cantidad=cantidad,
                     precio_unit=precio_unit,
                     subtotal=subtotal,
+                    # Usa .get() para 'observacion' para que sea opcional, si no fue sacado por pop()
                     observacion=item_data.get('observacion', ''), 
                 )
             )
             total_cost += subtotal
                     
-        # Bulk Create para optimizar base de datos
         ProductoPedido.objects.bulk_create(productos_para_crear)
             
-        # Actualizar costo total
         pedido.CostoTotal = total_cost
         pedido.save()
+    
+            #if mesa_instance:
+            #mesa_instance.ocupar() 
             
         return pedido

@@ -51,15 +51,16 @@ const Orders = () => {
   const entregarPedido = async (id) => {
     try {
       await axios.patch(`${API_URL}/${id}/`, {
-        estado_pedido: ESTADOS.ENTREGADO,
+        
       });
+
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === id ? { ...order, estado_pedido: ESTADOS.ENTREGADO } : order
         )
       );
     } catch (err) {
-      alert("Error al marcar como entregado.");
+      alert("Error al marcar como entregado.", err);
     }
   };
 
@@ -68,7 +69,7 @@ const Orders = () => {
   const closeOrder = async (id) => {
     try {
       await axios.patch(`${API_URL}/${id}/`, {
-        estado_pedido: ESTADOS.SERVIDO,
+      
       });
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
