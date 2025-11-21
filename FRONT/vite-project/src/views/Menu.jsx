@@ -5,9 +5,9 @@ import axios from "axios";
 
 import MenuItem from "../components/menu/MenuItem.jsx";
 import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
-import PreviewOrder from "../components/menu/PreviewOrder.jsx";
+import PreviewOrder from "../components/menu/PreviewOrder.jsx"; 
 import Header from "../components/Header.jsx";
-import Notification from "../components/Notification.jsx";
+import Notification from "../components/Notification.jsx"; 
 
 // --- CONSTANTES DE API ---
 const API_BASE = "http://localhost:8000/api";
@@ -38,7 +38,7 @@ const Menu = () => {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [mesaActiva, setMesaActiva] = useState(null);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(null); 
 
   // --- NOTIFICACIONES ---
   const showNotification = useCallback((type, message) => {
@@ -69,10 +69,6 @@ const Menu = () => {
       } catch (e) {
         console.error("Error mesa:", e);
         setMesaActiva(null);
-        showNotification(
-          "error",
-          "Error al leer los datos de la mesa. Reinicia sesión de mesa."
-        );
       }
     } else {
       // Si no hay mesa, también forzamos la selección
@@ -191,8 +187,9 @@ const Menu = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
+      
       {/* Header Fijo */}
-      <div className="sticky top-0 z-50 shadow-md bg-white">
+      <div className="sticky top-0 z-40 shadow-md bg-white">
         <Header />
         {mesaActiva && (
           <div className="bg-yellow-400 text-red-900 font-bold text-center py-2 shadow-sm">
