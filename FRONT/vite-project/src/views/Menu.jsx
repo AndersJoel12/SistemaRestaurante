@@ -55,7 +55,6 @@ const Menu = () => {
   // --- CARGAR MESA INICIAL ---
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
-    
     if (storedMesa) {
       try {
         const mesaParsed = JSON.parse(storedMesa);
@@ -200,10 +199,7 @@ const Menu = () => {
             📌 Mesa {mesaActiva.number === "999" ? "Virtual (Seleccionar Mesa)" : mesaActiva.number}
           </div>
         )}
-
-        {/* Notificación Flotante */}
         <Notification notification={notification} /> 
-        
         <MenuFilterBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -211,8 +207,7 @@ const Menu = () => {
           setActiveCategory={setActiveCategory}
           category={category}
         />
-      </div> 
-      {/* Fin del bloque sticky */}
+      </div>
 
       {/* Grid de Platos */}
       <main className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-32">
@@ -234,6 +229,45 @@ const Menu = () => {
                 showNotification={showNotification}
                 updateOrder={updateOrder}
             />
+          </div>
+        </div>
+      )}
+
+      {/* [NUEVO] MODAL DE SELECCIÓN DE MESA OBLIGATORIA */}
+      {showTableModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-[90%] max-w-lg text-center animate-bounce-in">
+            <h2 className="text-2xl font-extrabold text-red-700 mb-2">
+              📍 ¿Dónde estás sentado?
+            </h2>
+            <p className="text-gray-500 mb-6">
+              Selecciona tu número de mesa para que podamos llevarte tu comida.
+            </p>
+
+            {availableTables.length === 0 ? (
+              <div className="py-8">
+                <p className="animate-pulse text-gray-400">Buscando mesas disponibles...</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-2">
+                {availableTables.map((table) => (
+                  <button
+                    key={table.id}
+                    onClick={() => handleSelectTable(table)}
+                    className="p-4 bg-gray-100 hover:bg-red-100 border-2 border-gray-200 hover:border-red-500 rounded-xl transition-all duration-200 flex flex-col items-center justify-center gap-1 group"
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🪑</span>
+                    <span className="font-bold text-gray-700 group-hover:text-red-700">
+                      Mesa {table.number}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <div className="mt-4 text-xs text-gray-400">
+              *Selección obligatoria para continuar
+            </div>
           </div>
         </div>
       )}
