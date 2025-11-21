@@ -28,7 +28,6 @@ const Orders = () => {
     fetchOrders();
 
     const intervalId = setInterval(() => {
-      console.log("Recargando pedidos automáticamente...");
       fetchOrders();
     }, 5000);
 
@@ -56,7 +55,7 @@ const Orders = () => {
   const closeOrder = async (id) => {
     try {
       await axios.patch(`${API_URL}/${id}/`, {
-        estado_pedido: "SERVIDO",
+        
       });
 
       setOrders((prevOrders) =>
@@ -64,7 +63,7 @@ const Orders = () => {
           order.id === id ? { ...order, estado_pedido: "SERVIDO" } : order
         )
       );
-      alert(`Orden #${id} marcada como SERVIDA.`);
+      console.log(`Orden #${id} marcada como SERVIDA.`);
     } catch (err) {
       console.error("Error cerrando orden:", err);
       alert("Hubo un error al intentar cerrar la orden.");
@@ -189,7 +188,7 @@ const Orders = () => {
                         : "text-yellow-500"
                     }`}
                   >
-                    ${orden.total || orden.subtotal || "0.00"}
+                    ${orden.CostoTotal  || "No Calculado"}
                   </span>
                 </div>
               </div>
