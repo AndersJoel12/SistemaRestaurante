@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from 'axios';
+import { useNavigate } from "react-router-dom"; // Hook de navegación
 import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
 
 // --- CONFIGURACIÓN ---
 const API_URL = 'http://localhost:8000/api/facturas'; 
 const API_PEDIDOS = 'http://localhost:8000/api/pedidos'; 
+const API_MESAS = 'http://localhost:8000/api/mesas';
 
 // Emojis para métodos de pago
 const METODOS_PAGO = [
@@ -16,6 +18,8 @@ const METODOS_PAGO = [
 ];
 
 const GenerarFactura = () => {
+  const navigate = useNavigate();
+
   // --- ESTADOS UI ---
   const [loading, setLoading] = useState(false);
   const [loadingPedidos, setLoadingPedidos] = useState(false); 
@@ -25,10 +29,9 @@ const GenerarFactura = () => {
   // --- ESTADOS DE DATOS ---
   const [listaPedidos, setListaPedidos] = useState([]);
 
-  // Estado unificado del formulario de pago
+  // Estado del formulario
   const [formPago, setFormPago] = useState({
       pedidoId: "",
-      montoVisual: 0, 
       impuesto: 0,
       descuento: 0,
       metodoPago: "EFECTIVO",
@@ -41,20 +44,16 @@ const GenerarFactura = () => {
       cedula: "", nombre: "", direccion: "", telefono: ""
   });
 
-  // --- 1. FUNCIÓN PARA CARGAR PEDIDOS (OPTIMIZADA) ---
+  // --- 1. CARGA DE PEDIDOS ---
   const obtenerPedidos = useCallback(async () => {
       setLoadingPedidos(true);
       try {
-          // 🔧 CORRECCIÓN CRÍTICA:
-          // Usamos el filtro del Backend. Solo traemos lo que está 'PREPARADO'.
           const response = await axios.get(`${API_PEDIDOS}/?estado=PREPARADO`);
           
           if (Array.isArray(response.data)) {
               setListaPedidos(response.data);
-              
-              // Si no hay pedidos listos, limpiamos cualquier selección previa
               if (response.data.length === 0) {
-                  setFormPago(prev => ({ ...prev, pedidoId: "", montoVisual: 0 }));
+                  setFormPago(prev => ({ ...prev, pedidoId: "" }));
               }
           }
       } catch (error) {
@@ -65,47 +64,65 @@ const GenerarFactura = () => {
       }
   }, []);
 
-  // --- EFECTO: CARGAR AL INICIO ---
   useEffect(() => {
       obtenerPedidos();
   }, [obtenerPedidos]);
 
+  // --- 2. CÁLCULOS AUTOMÁTICOS ---
+  const totalPagar = useMemo(() => {
+      if (!formPago.pedidoId) return "0.00";
+      
+      const pedidoSeleccionado = listaPedidos.find(p => p.id.toString() === formPago.pedidoId);
+      const costoBase = pedidoSeleccionado ? parseFloat(pedidoSeleccionado.CostoTotal) : 0;
+      
+      const impuesto = parseFloat(formPago.impuesto) || 0;
+      const descuento = parseFloat(formPago.descuento) || 0;
+
+      return (costoBase + impuesto - descuento).toFixed(2);
+  }, [formPago.pedidoId, formPago.impuesto, formPago.descuento, listaPedidos]);
+
+  // --- 3. VALIDACIONES ---
+  const esReferenciaValida = 
+      formPago.metodoPago === "EFECTIVO" || 
+      (formPago.referencia && formPago.referencia.length >= 6);
+
   // --- HANDLERS ---
 
   const handleSeleccionarPedido = (e) => {
-      const idSeleccionado = e.target.value;
-      const pedidoEncontrado = listaPedidos.find(p => p.id.toString() === idSeleccionado);
-      
-      // Convertimos a float para asegurar cálculos matemáticos correctos
-      const monto = pedidoEncontrado ? parseFloat(pedidoEncontrado.CostoTotal) : 0;
-
-      setFormPago({
-          ...formPago,
-          pedidoId: idSeleccionado,
-          montoVisual: monto 
-      });
+      setFormPago({ ...formPago, pedidoId: e.target.value });
   };
 
   const handleFormChange = (e) => {
       setFormPago({ ...formPago, [e.target.name]: e.target.value });
   };
 
+  const handleReferenciaChange = (e) => {
+      let valorInput = "";
+      if (e && e.target && typeof e.target.value !== 'undefined') {
+          valorInput = e.target.value;
+      } else if (e) {
+          valorInput = String(e);
+      }
+      const soloNumeros = valorInput.replace(/[^0-9]/g, '');
+      setFormPago(prev => ({ ...prev, referencia: soloNumeros }));
+  };
+
   const handleClienteChange = (e) => {
       setDatosCliente({ ...datosCliente, [e.target.name]: e.target.value });
   };
 
+  // 🔥 LÓGICA DE PROCESAMIENTO
   const handleProcesarPago = async () => {
       setLoading(true);
       setMessage(null);
 
-      // Validaciones
       if (!formPago.pedidoId) {
-          setMessage({ type: "error", text: "Debes seleccionar un Pedido para facturar." });
+          setMessage({ type: "error", text: "Debes seleccionar un Pedido." });
           setLoading(false);
           return;
       }
-      if (formPago.metodoPago !== "EFECTIVO" && !formPago.referencia.trim()) {
-          setMessage({ type: "error", text: "Ingrese la referencia para pagos electrónicos." });
+      if (!esReferenciaValida) {
+          setMessage({ type: "error", text: "Referencia incompleta (mínimo 6 dígitos)." });
           setLoading(false);
           return;
       }
@@ -117,7 +134,9 @@ const GenerarFactura = () => {
           }
       }
 
-      // Payload
+      const pedidoActual = listaPedidos.find(p => p.id === parseInt(formPago.pedidoId));
+      const mesaIdALiberar = pedidoActual ? pedidoActual.mesa_id : null;
+
       const payload = {
           pedido_id: parseInt(formPago.pedidoId, 10),
           metodo_pago: formPago.metodoPago,
@@ -133,46 +152,45 @@ const GenerarFactura = () => {
       try {
           await axios.post(`${API_URL}/`, payload);
           
+          if (mesaIdALiberar) {
+              try {
+                  await axios.patch(`${API_MESAS}/${mesaIdALiberar}/`, { estado: true });
+                  console.log(`✅ Mesa ${mesaIdALiberar} liberada.`);
+              } catch (errorMesa) {
+                  console.error("⚠️ Error liberando mesa:", errorMesa);
+              }
+          }
+
           setSuccess(true);
           setMessage({ type: "success", text: "¡Factura generada y Mesa liberada!" });
-
-          // --- ACTUALIZAR LISTA LOCALMENTE ---
-          // Eliminamos el pedido procesado de la lista visualmente para feedback instantáneo
+          
           setListaPedidos(prev => prev.filter(p => p.id !== parseInt(formPago.pedidoId)));
           
-          // Reset automático después de 3 segundos
           setTimeout(() => {
               setSuccess(false);
               setFormPago({
-                  pedidoId: "", montoVisual: 0, impuesto: 0, descuento: 0, metodoPago: "EFECTIVO", referencia: ""
+                  pedidoId: "", impuesto: 0, descuento: 0, metodoPago: "EFECTIVO", referencia: ""
               });
               setRequiereFactura(false);
               setDatosCliente({ cedula: "", nombre: "", direccion: "", telefono: "" });
               setMessage(null);
-              // Volvemos a consultar al servidor para asegurar consistencia
               obtenerPedidos(); 
           }, 3000);
 
       } catch (error) {
           console.error("Error al procesar pago:", error);
-          if (error.response?.data) {
-               const errData = error.response.data;
-               if (typeof errData === 'object') {
-                   const firstKey = Object.keys(errData)[0];
-                   const msg = Array.isArray(errData[firstKey]) ? errData[firstKey][0] : errData[firstKey];
-                   setMessage({ type: "error", text: `Error en ${firstKey}: ${msg}` });
-               } else {
-                   setMessage({ type: "error", text: "Error en el servidor." });
-               }
-          } else {
-              setMessage({ type: "error", text: "Error de conexión." });
+          const errData = error.response?.data;
+          let errorMsg = "Error de conexión o servidor.";
+          if (errData && typeof errData === 'object') {
+              const values = Object.values(errData);
+              errorMsg = Array.isArray(values[0]) ? values[0][0] : values[0];
           }
+          setMessage({ type: "error", text: errorMsg });
       } finally {
           setLoading(false);
       }
   };
 
-  // --- VISTA DE ÉXITO ---
   if (success) {
       return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 animate-fade-in-down">
@@ -186,37 +204,41 @@ const GenerarFactura = () => {
       );
   }
 
-  // --- VISTA PRINCIPAL ---
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans flex justify-center">
-      
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* COLUMNA IZQUIERDA */}
         <div className="lg:col-span-2 space-y-6">
-            
             <div className="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-red-600">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    💰 Datos de la Operación
-                </h2>
                 
-                {/* SELECCIÓN DE PEDIDO CON BOTÓN DE RECARGA */}
+                {/* 🆕 CABECERA FLEX: TÍTULO A LA IZQ, BOTÓN A LA DER */}
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        💰 Datos de la Operación
+                    </h2>
+                    <button 
+                        onClick={() => navigate('/pedidos')} 
+                        className="text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-600 px-4 py-2 rounded-lg transition-colors font-semibold flex items-center gap-1"
+                        title="Regresar a la lista de pedidos"
+                    >
+                        ⬅️ Volver
+                    </button>
+                </div>
+                
+                {/* SELECCIÓN DE PEDIDO */}
                 <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
                     <div className="flex justify-between items-center mb-2">
                         <label className="text-sm font-bold text-gray-500 uppercase flex items-center gap-2">
                             Seleccionar Pedido *
-                            {/* CONTADOR DE PEDIDOS */}
                             <span className={`text-xs px-2 py-1 rounded-full ${listaPedidos.length > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-500'}`}>
                                 {listaPedidos.length} Pendientes
                             </span>
                         </label>
-                        
-                        {/* BOTÓN DE ACTUALIZAR */}
                         <button 
                             onClick={obtenerPedidos}
                             disabled={loadingPedidos}
                             className="text-xs bg-white border border-gray-300 hover:bg-gray-100 text-gray-600 px-3 py-1 rounded-lg shadow-sm flex items-center gap-1 transition-all"
-                            title="Buscar nuevos pedidos"
                         >
                             {loadingPedidos ? <span className="animate-spin">↻</span> : "🔄"} Actualizar
                         </button>
@@ -240,15 +262,12 @@ const GenerarFactura = () => {
                                 </option>
                             ))}
                         </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                            <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
-                        </div>
                     </div>
                     
                     {listaPedidos.length === 0 && !loadingPedidos && (
                         <div className="mt-2 flex items-center gap-2 text-green-600 bg-green-50 p-2 rounded-lg text-xs font-bold border border-green-200">
                             <span>✨</span>
-                            <span>¡Todo al día! No hay pedidos "Preparados" pendientes.</span>
+                            <span>¡Todo al día! No hay pedidos preparados pendientes.</span>
                         </div>
                     )}
                 </div>
@@ -264,7 +283,6 @@ const GenerarFactura = () => {
                     </div>
                 </div>
                 
-                {/* MONTO AUTOMÁTICO */}
                 <div className="mb-6">
                     <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Monto Total a Pagar ($)</label>
                     <div className="relative">
@@ -272,7 +290,7 @@ const GenerarFactura = () => {
                         <input 
                             type="text" 
                             readOnly
-                            value={(parseFloat(formPago.montoVisual || 0) + parseFloat(formPago.impuesto || 0) - parseFloat(formPago.descuento || 0)).toFixed(2)}
+                            value={totalPagar}
                             className="w-full pl-10 pr-4 py-4 text-4xl font-extrabold text-gray-800 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 transition-colors bg-gray-50"
                             placeholder="0.00"
                         />
@@ -302,14 +320,35 @@ const GenerarFactura = () => {
 
                 {formPago.metodoPago !== "EFECTIVO" && (
                     <div className="animate-fade-in-up">
-                        <InputField label={`Referencia / Recibo (${formPago.metodoPago})`} name="referencia" value={formPago.referencia} onChange={handleFormChange} placeholder="Ej: 123456..." />
+                        <InputField 
+                            label={
+                                <div className="flex justify-between items-center">
+                                    <span>🔢 Últimos 6 dígitos (Ref)</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                        formPago.referencia.length >= 6 
+                                        ? "bg-green-100 text-green-700" 
+                                        : "bg-red-100 text-red-600"
+                                    }`}>
+                                        {formPago.referencia.length}/6
+                                    </span>
+                                </div>
+                            }
+                            name="referencia" 
+                            value={formPago.referencia} 
+                            onChange={handleReferenciaChange}
+                            placeholder="Ej: 884291" 
+                        />
+                        {!esReferenciaValida && (
+                            <p className="text-xs text-red-500 mt-1 ml-1 animate-pulse">
+                                * Faltan {6 - formPago.referencia.length} dígitos para validar.
+                            </p>
+                        )}
                     </div>
                 )}
             </div>
             <MessageAlert msg={message} />
         </div>
 
-        {/* COLUMNA DERECHA: DATOS CLIENTE */}
         <div className="lg:col-span-1">
             <div className={`p-6 rounded-2xl shadow-lg border transition-all duration-300 ${requiereFactura ? "bg-white border-blue-500" : "bg-gray-50 border-gray-200"}`}>
                 <div className="flex items-center justify-between mb-6">
@@ -337,7 +376,15 @@ const GenerarFactura = () => {
                 )}
 
                 <div className="mt-8 border-t pt-6">
-                    <button onClick={handleProcesarPago} disabled={loading || !formPago.pedidoId} className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95 flex justify-center items-center gap-2 ${loading || !formPago.pedidoId ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700 hover:shadow-green-200"}`}>
+                    <button 
+                        onClick={handleProcesarPago} 
+                        disabled={loading || !formPago.pedidoId || !esReferenciaValida} 
+                        className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95 flex justify-center items-center gap-2 
+                            ${loading || !formPago.pedidoId || !esReferenciaValida
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
+                                : "bg-green-600 text-white hover:bg-green-700 hover:shadow-green-200"
+                            }`}
+                    >
                         {loading ? <span>Generando...</span> : <><span>✅</span> Generar Factura</>}
                     </button>
                 </div>
