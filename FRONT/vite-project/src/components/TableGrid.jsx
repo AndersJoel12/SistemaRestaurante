@@ -215,11 +215,11 @@ const TablesGrid = ({ onNavigateToMenu }) => {
             </div>
 
             {/* Asumiendo que ArrowFluctuation acepta el prop number */}
-            <ArrowFluctuation mesa={currentSelectedTable.number} />
+            {/* <ArrowFluctuation mesa={currentSelectedTable.number} /> */}
 
             <button
               onClick={handleContinuarPedido}
-              className="w-full mt-4 py-3 px-4 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition shadow-lg"
+              className="disabled:cursor-not-allowed w-full mt-4 py-3 px-4 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition shadow-lg"
             >
               Ver Pedido / Agregar Items 📝
             </button>

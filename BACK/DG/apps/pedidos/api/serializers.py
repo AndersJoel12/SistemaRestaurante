@@ -38,7 +38,7 @@ class ProductoPedidoSerializer(serializers.ModelSerializer):
         return value
 
 class PedidoSerializer(serializers.ModelSerializer):
-    items = ProductoPedidoSerializer(many=True, write_only=True)
+    items = ProductoPedidoSerializer(many=True, read_only=False)
     total_items = serializers.SerializerMethodField(read_only=True)
 
     mesa_id = serializers.PrimaryKeyRelatedField(

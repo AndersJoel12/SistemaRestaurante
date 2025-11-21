@@ -11,12 +11,13 @@ const ArrowFluctuation = ({ mesa }) => {
   };
 
   return (
-    <button
+    <div></div>
+ /*    <button
       onClick={handleRedirect}
       className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-orange-600 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-orange-700 transition duration-200 flex items-center gap-2"
     >
       ➡️ PROCEDER PEDIDO
-    </button>
+    </button> */
   );
 };
 
