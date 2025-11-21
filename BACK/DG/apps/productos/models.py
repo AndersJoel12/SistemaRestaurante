@@ -8,7 +8,7 @@ class Producto(BaseModel):
     descripcion  = models.TextField('Descripción del Producto', max_length=500, null=True, blank=True)
     precio       = models.DecimalField('Precio del Producto', max_digits=10, decimal_places=2)
     disponible   = models.BooleanField('Disponibilidad', default=False)
-    categoria = models.ForeignKey('Categoria', on_delete=models.PROTECT, verbose_name='Categoría del Producto')
+    categoria    = models.ForeignKey('Categoria', on_delete=models.PROTECT, verbose_name='Categoría del Producto')
 
     class Meta:
         verbose_name = 'Producto'

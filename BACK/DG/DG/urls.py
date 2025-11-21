@@ -4,6 +4,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from apps.users.api.serializers import CustomTokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from django.conf import settings
+from django.conf.urls.static import static
+
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(serializer_class=CustomTokenObtainPairSerializer), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -18,3 +21,6 @@ urlpatterns = [
     path('api/', include('apps.productos.api.urls')),
     path('api/', include('apps.facturacion.api.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
