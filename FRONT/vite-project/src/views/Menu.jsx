@@ -8,7 +8,7 @@ import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
 import PreviewOrder from "../components/menu/PreviewOrder.jsx";
 import Header from "../components/Header.jsx";
 import Notification from "../components/Notification.jsx";
-
+import NavButton from "../components/Navbutton.jsx";
 // --- CONFIGURACIÓN API ---
 const API_BASE = "http://localhost:8000/api";
 const URL_CATEGORY = `${API_BASE}/categorias`;
@@ -142,21 +142,8 @@ const Menu = () => {
     });
   };
 
-  // --- ENVÍO DE PEDIDO (Solo se usa si YA hay mesa real) ---
+  // --- ENVÍO DE PEDIDO ---
   const executeOrderSubmission = async (targetTableId, targetTableNumber) => {
-    // ... (Tu lógica de envío original se mantiene igual aquí)
-    // Para ahorrar espacio en el chat, asumo que este bloque no cambia
-    // Si necesitas que lo repita, avísame.
-    // La lógica es la misma: token, payload, axios.post...
-
-    console.log(`🚀 Enviando a mesa ${targetTableNumber}...`);
-    // (Simulación del código que ya tenías para enviar)
-    // ...
-    // Al finalizar exitosamente:
-    showNotification("success", `¡Pedido enviado a Mesa ${targetTableNumber}!`);
-    setActiveOrder([]);
-    sessionStorage.removeItem("active_order");
-    setTimeout(() => navigate("/orders"), 1500);
     console.log(
       `🚀 [SUBMIT] Iniciando envío para Mesa ID: ${targetTableId} (Nro: ${targetTableNumber})`
     );
@@ -184,7 +171,7 @@ const Menu = () => {
       })),
     };
 
-    // LOG ESTRATÉGICO: Este es el más importante. Muestra qué se va a enviar.
+    // LOG ESTRATÉGICO
     console.log(
       "📦 [PAYLOAD] JSON a enviar:",
       JSON.stringify(payload, null, 2)
@@ -230,12 +217,11 @@ const Menu = () => {
     if (totalItems === 0) return;
 
     // 🛑 INTERCEPTOR MODIFICADO
-    // Si no hay mesa, o es la mesa virtual 999...
+    // Si no hay mesa, o es la mesa virtual 999 (cliente sin mesa asignada)...
     if (!mesaActiva || mesaActiva.number === "999" || mesaActiva.id === 999) {
       console.warn("🛑 [INTERCEPTOR] Cliente sin mesa asignada.");
 
-      // ANTES: fetchTables() y setShowTableModal(true)
-      // AHORA: Solo mostramos el mensaje de "Espera al mesero"
+      // Mostramos el modal de "Espera al mesero"
       setShowWaiterModal(true);
       return;
     }
@@ -250,6 +236,7 @@ const Menu = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 shadow-md bg-white">
         <Header />
+
         {mesaActiva && (
           <div
             className={`font-bold text-center py-2 shadow-sm text-sm ${
@@ -303,7 +290,7 @@ const Menu = () => {
         </div>
       )}
 
-      {/* 🔥 NUEVO MODAL: AVISO AL MESERO 🔥 */}
+      {/* 🔥 MODAL: AVISO AL MESERO 🔥 */}
       {showWaiterModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[70]">
           <div className="bg-white rounded-xl shadow-2xl p-8 w-[90%] max-w-md text-center animate-bounce-in border-t-4 border-blue-500">

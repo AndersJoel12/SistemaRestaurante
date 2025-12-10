@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Header from "../components/Header";
 import { useNavigate } from "react-router-dom";
-
+import NavButton from "../components/Navbutton";
 const API_URL = "http://127.0.0.1:8000/api/pedidos";
 
 // Definimos los estados
@@ -143,21 +143,17 @@ const Orders = () => {
           aria-label="Opciones de navegación principal"
         >
           {/* Añadido aria-label para describir el propósito del botón */}
-          <button
-            onClick={goToTables}
-            className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]"
-            aria-label="Ir a la vista de Mesas"
-          >
+          <NavButton to="/tables" ariaLabel="Ir a la vista de Mesas">
             🗺️ Ver Mesas
-          </button>
-          {/* Añadido aria-label para describir el propósito del botón */}
-          <button
-            onClick={goToBilling}
-            className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition transform hover:scale-[1.05]"
-            aria-label="Ir a la vista de Facturas"
-          >
+          </NavButton>
+
+          <NavButton to="/billing" ariaLabel="Ir a la vista de Facturas">
             🧾 Facturas
-          </button>
+          </NavButton>
+
+          <NavButton to="/Menu" ariaLabel="Ir a la vista de Menu">
+            🧾 Mesa
+          </NavButton>
         </div>
 
         {/* Agregado role="alert" para mensajes de error */}
