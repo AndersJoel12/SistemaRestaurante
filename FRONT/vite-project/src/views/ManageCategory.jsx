@@ -379,8 +379,7 @@ const GestionCategorias = () => {
                     No se encontraron categorías.
                   </td>
                 </tr>
-              ) : (
-                filteredCategorias.map((cat) => {
+              ) : ( filteredCategorias.map((cat) => {
                   const statusText = cat.estado ? "ACTIVO" : "INACTIVO";
                   return (
                     <tr

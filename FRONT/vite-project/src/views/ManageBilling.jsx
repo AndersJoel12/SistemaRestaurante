@@ -218,7 +218,6 @@ const GestionFacturacion = () => {
     setMessage(null); // Limpiar mensaje de alerta
     try {
       const response = await axios.get(`${API_URL}/`);
-      console.log("🟢 [FETCH] Facturas cargadas:", response.data.length);
 
       if (Array.isArray(response.data)) {
         setFacturas(response.data);
@@ -429,7 +428,7 @@ const GestionFacturacion = () => {
 
   // --- RENDER ---
   return (
-    <div className="p-4 sm:p-6 bg-gray-100 min-h-screen font-sans">
+    <div className="bg-gray-100 min-h-screen font-sans pb-24">
       <Header />
 
       {/* Indicador de Carga */}

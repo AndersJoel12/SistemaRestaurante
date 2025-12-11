@@ -7,6 +7,7 @@ class Producto(BaseModel):
     imagen       = models.ImageField('Imagen del Producto', upload_to='media/productos/', null=True, blank=True)
     descripcion  = models.TextField('Descripción del Producto', max_length=500, null=True, blank=True)
     precio       = models.DecimalField('Precio del Producto', max_digits=10, decimal_places=2)
+    stock        = models.IntegerField('Cantidad en Stock', default=0)
     disponible   = models.BooleanField('Disponibilidad', default=False)
     categoria    = models.ForeignKey('Categoria', on_delete=models.PROTECT, verbose_name='Categoría del Producto')
 
@@ -14,6 +15,15 @@ class Producto(BaseModel):
         verbose_name = 'Producto'
         verbose_name_plural = 'Productos'
         db_table = 'producto'
+
+    def save(self, *args, **kwargs):
+
+        if self.stock > 0:
+            self.disponible = True
+        else:
+            self.disponible = False
+            
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre
