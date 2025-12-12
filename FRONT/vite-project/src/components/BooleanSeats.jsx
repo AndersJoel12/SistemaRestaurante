@@ -1,32 +1,50 @@
-// src/components/StatusBadge.jsx
 import React from "react";
 
-const StatusBadge = ({ status }) => {
-  let bgColor = "bg-gray-300";
-  let textColor = "text-gray-800";
-  let label = "Desconocido";
+// 1. CONFIGURACIÓN VISUAL
+// Adaptada para iconos grandes en lugar de etiquetas de texto.
+const SEAT_CONFIG = {
+  libre: {
+    icon: "🍽️", // Plato: Invita a comer
+    className: "bg-green-100 text-green-600 border-green-200",
+  },
+  ocupada: {
+    icon: "😋", // Cara saboreando: Gente comiendo
+    className: "bg-white text-red-500 border-red-100",
+  },
+  deshabilitada: {
+    icon: "🔒", // Candado: No se puede usar
+    className: "bg-gray-100 text-gray-400 border-gray-200 grayscale",
+  },
+  // Fallback
+  unknown: {
+    icon: "❓",
+    className: "bg-gray-50 text-gray-300 border-gray-100",
+  },
+};
 
-  if (status === "libre") {
-    bgColor = "bg-green-200";
-    textColor = "text-green-800";
-    label = "Libre ✅";
-  } else if (status === "ocupada") {
-    bgColor = "bg-red-200";
-    textColor = "text-red-800";
-    label = "Ocupada ❌";
-  } else if (status === "deshabilitada") {
-    bgColor = "bg-gray-400";
-    textColor = "text-gray-900";
-    label = "Deshabilitada 🚫";
-  }
+const BooleanSeats = ({ status }) => {
+  // 2. NORMALIZACIÓN
+  const statusKey = (status || "").toLowerCase();
+  const config = SEAT_CONFIG[statusKey] || SEAT_CONFIG.unknown;
 
   return (
-    <span
-      className={`px-2 py-1 rounded-full text-xs font-semibold ${bgColor} ${textColor}`}
+    // 3. RENDERIZADO VISUAL
+    // Usamos un círculo (rounded-full) grande (w-12 h-12) para que destaque en la tarjeta.
+    // NO usamos ARIA aquí porque el padre (TableCell) ya describe el estado.
+    <div
+      className={`
+        flex items-center justify-center
+        w-10 h-10 sm:w-12 sm:h-12 
+        rounded-full border-2
+        text-xl sm:text-2xl 
+        shadow-sm mb-1
+        transition-all duration-300
+        ${config.className}
+      `}
     >
-      {label}
-    </span>
+      {config.icon}
+    </div>
   );
 };
 
-export default StatusBadge;
+export default BooleanSeats;

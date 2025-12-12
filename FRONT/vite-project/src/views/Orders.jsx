@@ -147,12 +147,12 @@ const Orders = () => {
             🗺️ Ver Mesas
           </NavButton>
 
-          <NavButton to="/billing" ariaLabel="Ir a la vista de Facturas">
-            🧾 Facturas
+          <NavButton to="/Menu" ariaLabel="Ir a la vista de Menu">
+            🧾 Tomar Orden
           </NavButton>
 
-          <NavButton to="/Menu" ariaLabel="Ir a la vista de Menu">
-            🧾 Mesa
+          <NavButton to="/billing" ariaLabel="Ir a la vista de Facturas">
+            🧾 Facturas
           </NavButton>
         </div>
 
