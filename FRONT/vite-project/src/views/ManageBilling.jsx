@@ -431,16 +431,6 @@ const GestionFacturacion = () => {
     <div className="bg-gray-100 min-h-screen font-sans pb-24">
       <Header />
 
-      {/* Indicador de Carga */}
-      <div className="bg-red-800 text-white p-4 rounded-lg shadow-xl mb-6 flex justify-between items-center">
-        <h1 className="text-xl font-bold">Historial de Facturación 🧾</h1>
-        {loading && (
-          <span className="text-sm animate-pulse font-medium bg-red-900 px-3 py-1 rounded-full">
-            ⏳ Cargando...
-          </span>
-        )}
-      </div>
-
       {/* Alerta de Mensajes */}
       <div className="mb-4">
         {!editingItem && <MessageAlert msg={message} />}
