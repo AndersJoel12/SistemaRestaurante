@@ -187,18 +187,16 @@ const GestionMenu = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen font-sans pb-48 relative">
-       <Header></Header>
+      <Header></Header>
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
-                <MessageAlert msg={message} />   
-        {/* Controles (Búsqueda, Filtro, Botón Crear) */}      
+        <MessageAlert msg={message} />
+        {/* Controles (Búsqueda, Filtro, Botón Crear) */}
         <div
           className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-md sticky top-2 z-10"
           role="toolbar"
           aria-label="Filtros y acciones de menú"
         >
-                   
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                       
             <input
               type="text"
               placeholder="🔍 Buscar plato..."
@@ -207,36 +205,32 @@ const GestionMenu = () => {
               className="border border-gray-300 rounded-lg px-4 py-3 w-full sm:w-64 focus:ring-2 focus:ring-red-500 outline-none"
               aria-label="Buscar plato por nombre o descripción"
             />
-                       {" "}
+
             <select
               value={filtroCategoria}
               onChange={(e) => setFiltroCategoria(e.target.value)}
               className="border border-gray-300 rounded-lg px-4 py-3 w-full sm:w-auto bg-white focus:ring-2 focus:ring-red-500 cursor-pointer"
               aria-label="Filtrar por categoría"
             >
-                            <option value="">📂 Todas</option>             {" "}
+              <option value="">📂 Todas</option>
               {categorias.map((c) => (
                 <option key={c.id} value={c.id}>
-                                    {c.nombre}               {" "}
+                  {c.nombre}
                 </option>
               ))}
-                         {" "}
             </select>
-                     {" "}
           </div>
-                   {" "}
+
           <button
             onClick={() => openModal(null)}
             className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md active:scale-95"
             aria-label="Abrir formulario para crear un nuevo plato"
           >
-                        + Crear Plato          {" "}
+            + Crear Plato
           </button>
-                 {" "}
         </div>
-                {/* Vista de Tarjetas (Dispositivos pequeños) */}       {" "}
+        {/* Vista de Tarjetas (Dispositivos pequeños) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
-                   {" "}
           {platosFiltrados.map((dish) => {
             const catName = getCategoryName(dish);
             const isAvailable = dish.available ?? dish.disponible ?? true;
@@ -246,49 +240,37 @@ const GestionMenu = () => {
                 className="bg-white p-4 rounded-xl shadow-md flex flex-col gap-3 border border-gray-100"
                 role="listitem"
               >
-                               {" "}
                 <div className="flex gap-4">
-                                   {" "}
                   <img
                     src={dish.imagen || "https://placehold.co/80"}
                     alt={`Imagen de ${dish.nombre || dish.name || "plato"}`}
                     className="w-20 h-20 rounded-lg object-cover bg-gray-100"
                   />
-                                   {" "}
+
                   <div className="flex-1">
-                                       {" "}
                     <h3 className="font-bold text-gray-800 text-lg leading-tight">
-                                            {dish.nombre || dish.name}         
-                               {" "}
+                      {dish.nombre || dish.name}
                     </h3>
-                                       {" "}
-                    {/* CAMBIO AQUÍ: line-clamp-2 cambiado a line-clamp-3 */}   
-                                   {" "}
+
+                    {/* CAMBIO AQUÍ: line-clamp-2 cambiado a line-clamp-3 */}
+
                     <p className="text-xs text-gray-500 mt-1 line-clamp-3">
-                                            {dish.descripcion}                 
-                       {" "}
+                      {dish.descripcion}
                     </p>
-                                     {" "}
                   </div>
-                                 {" "}
                 </div>
-                               {" "}
+
                 <div className="flex justify-between items-center text-sm border-t pt-2 mt-1">
-                                   {" "}
                   <span className="font-semibold text-gray-600 bg-gray-100 px-2 rounded">
-                                        {catName}                 {" "}
+                    {catName}
                   </span>
-                                   {" "}
+
                   <span className="font-extrabold text-xl text-red-700">
-                                        $
-                    {parseFloat(dish.precio || dish.price).toFixed(2)}         
-                           {" "}
+                    ${parseFloat(dish.precio || dish.price).toFixed(2)}
                   </span>
-                                 {" "}
                 </div>
-                               {" "}
+
                 <div className="flex justify-between items-center mt-1 gap-2">
-                                   {" "}
                   <span
                     className={`py-1 px-2 rounded text-[10px] font-bold uppercase ${
                       isAvailable
@@ -296,105 +278,89 @@ const GestionMenu = () => {
                         : "bg-red-100 text-red-700"
                     }`}
                   >
-                                        {isAvailable ? "Disponible" : "Agotado"}
-                                     {" "}
+                    {isAvailable ? "Disponible" : "Agotado"}
                   </span>
-                                   {" "}
+
                   <div
                     className="flex gap-2"
                     role="group"
                     aria-label={`Acciones para ${dish.nombre || dish.name}`}
                   >
-                                       {" "}
                     <button
                       onClick={() => openModal(dish)}
                       className="p-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
                       aria-label={`Editar ${dish.nombre || dish.name}`}
                     >
-                                            ✏️                    {" "}
+                      ✏️
                     </button>
-                                       {" "}
+
                     <button
                       onClick={() => handleDelete(dish.id)}
                       className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100"
                       aria-label={`Eliminar ${dish.nombre || dish.name}`}
                     >
-                                            🗑️                    {" "}
+                      🗑️
                     </button>
-                                     {" "}
                   </div>
-                                 {" "}
                 </div>
-                             {" "}
               </div>
             );
           })}
-                 {" "}
         </div>
-                {/* Vista de Tabla (Dispositivos grandes - md:block) */}       {" "}
+        {/* Vista de Tabla (Dispositivos grandes - md:block) */}
         <div className="hidden md:block overflow-x-auto bg-white rounded-xl shadow-md border border-gray-100">
-                   {" "}
           <table
             className="min-w-full divide-y divide-gray-200"
             role="table"
             aria-label="Lista de platos del menú"
           >
-                       {" "}
             <thead className="bg-gray-50">
-                           {" "}
               <tr>
-                               {" "}
                 <th
                   scope="col"
                   className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
                 >
-                                    Imagen                {" "}
+                  Imagen
                 </th>
-                               {" "}
                 <th
                   scope="col"
                   className="py-4 px-6 text-left text-xs font-bold text-gray-600 uppercase"
                 >
-                                    Nombre                {" "}
+                  Nombre
                 </th>
-                               {" "}
+
                 <th
                   scope="col"
                   className="py-4 px-6 text-left text-xs font-bold text-gray-600 uppercase"
                 >
-                                    Categoría                {" "}
+                  Categoría
                 </th>
-                               {" "}
+
                 <th
                   scope="col"
                   className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
                 >
-                                    Precio                {" "}
+                  Precio
                 </th>
-                               {" "}
+
                 <th
                   scope="col"
                   className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
                 >
-                                    Estado                {" "}
+                  Estado
                 </th>
-                               {" "}
                 <th
                   scope="col"
                   className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
                 >
-                                    Acciones                {" "}
+                  Acciones
                 </th>
-                             {" "}
               </tr>
-                         {" "}
             </thead>
-                       {" "}
             <tbody
               className="text-gray-700 text-sm divide-y divide-gray-200"
               role="rowgroup"
             >
-                           {" "}
               {platosFiltrados.map((dish) => {
                 const catName = getCategoryName(dish);
                 const isAvailable = dish.available ?? dish.disponible ?? true;
@@ -404,50 +370,37 @@ const GestionMenu = () => {
                     className="hover:bg-red-50 transition-colors group"
                     role="row"
                   >
-                                       {" "}
                     <td className="py-3 px-6 text-center" role="cell">
-                                           {" "}
                       <img
                         src={dish.imagen || "https://placehold.co/40"}
                         alt={`Imagen de ${dish.nombre || dish.name || "plato"}`}
                         className="w-12 h-12 rounded-lg object-cover mx-auto shadow-sm border"
                       />
-                                         {" "}
                     </td>
-                                       {" "}
                     <td className="py-3 px-6 text-left" role="cell">
-                                           {" "}
                       <div className="font-bold text-gray-800 text-base">
-                                                {dish.nombre || dish.name}     
-                                       {" "}
+                        {dish.nombre || dish.name}
                       </div>
-                                           {" "}
+
                       <div className="text-xs text-gray-500 max-w-xs truncate">
-                                                {dish.descripcion}             
-                               {" "}
+                        {dish.descripcion}
                       </div>
-                                         {" "}
                     </td>
-                                       {" "}
+
                     <td className="py-3 px-6 text-left" role="cell">
-                                           {" "}
                       <span className="bg-gray-100 text-gray-600 py-1 px-3 rounded-full text-xs font-bold border border-gray-200">
-                                                {catName}                     {" "}
+                        {catName}
                       </span>
-                                         {" "}
                     </td>
-                                       {" "}
+
                     <td
                       className="py-3 px-6 text-center font-bold text-gray-700 text-base"
                       role="cell"
                     >
-                                            $
-                      {parseFloat(dish.precio || dish.price).toFixed(2)}       
-                                 {" "}
+                      ${parseFloat(dish.precio || dish.price).toFixed(2)}
                     </td>
-                                       {" "}
+
                     <td className="py-3 px-6 text-center" role="cell">
-                                           {" "}
                       <span
                         className={`py-1 px-3 rounded-full text-xs font-bold ${
                           isAvailable
@@ -455,48 +408,36 @@ const GestionMenu = () => {
                             : "bg-red-100 text-red-700"
                         }`}
                       >
-                                               {" "}
-                        {isAvailable ? "DISPONIBLE" : "AGOTADO"}               
-                             {" "}
+                        {isAvailable ? "DISPONIBLE" : "AGOTADO"}
                       </span>
-                                         {" "}
                     </td>
-                                       {" "}
                     <td
                       className="py-3 px-6 text-center space-x-4 opacity-80 group-hover:opacity-100"
                       role="cell"
                     >
-                                           {" "}
                       <button
                         onClick={() => openModal(dish)}
                         className="text-indigo-600 hover:text-indigo-800 font-semibold"
                         aria-label={`Editar ${dish.nombre || dish.name}`}
                       >
-                                                Editar                      {" "}
+                        Editar
                       </button>
-                                           {" "}
                       <button
                         onClick={() => handleDelete(dish.id)}
                         className="text-red-600 hover:text-red-800 font-semibold"
                         aria-label={`Eliminar ${dish.nombre || dish.name}`}
                       >
-                                                Eliminar                      {" "}
+                        Eliminar
                       </button>
-                                         {" "}
                     </td>
-                                     {" "}
                   </tr>
                 );
               })}
-                         {" "}
             </tbody>
-                     {" "}
           </table>
-                 {" "}
         </div>
-             {" "}
       </div>
-            {/* MODAL DE EDICIÓN/CREACIÓN */}     {" "}
+      {/* MODAL DE EDICIÓN/CREACIÓN */}
       {editingItem && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex justify-center items-center z-50 p-4"
@@ -505,31 +446,25 @@ const GestionMenu = () => {
           aria-modal="true"
           aria-labelledby="modal-title"
         >
-                   {" "}
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all scale-100"
             onClick={(e) => e.stopPropagation()}
           >
-                       {" "}
             <div className="bg-red-800 p-4 text-white flex justify-between items-center">
-                           {" "}
               <h2 id="modal-title" className="text-xl font-bold">
-                               {" "}
-                {editingItem.id ? "Editar Plato" : "Crear Plato"}             {" "}
+                {editingItem.id ? "Editar Plato" : "Crear Plato"}
               </h2>
-                           {" "}
+
               <button
                 onClick={() => setEditingItem(null)}
                 className="text-white text-2xl"
                 aria-label="Cerrar modal"
               >
-                                &times;              {" "}
+                &times;
               </button>
-                         {" "}
             </div>
-                       {" "}
+
             <div className="p-6 overflow-y-auto max-h-[75vh] space-y-5">
-                           {" "}
               <InputField
                 label="Nombre"
                 name="name"
@@ -537,16 +472,15 @@ const GestionMenu = () => {
                 onChange={handleFormChange}
                 aria-required="true"
               />
-                           {" "}
+
               <div>
-                               {" "}
                 <label
                   htmlFor="descripcion"
                   className="block text-sm font-bold text-gray-700 mb-1"
                 >
-                                    Descripción                {" "}
+                  Descripción
                 </label>
-                               {" "}
+
                 <textarea
                   id="descripcion"
                   name="descripcion"
@@ -556,20 +490,17 @@ const GestionMenu = () => {
                   className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 outline-none resize-none"
                   aria-label="Descripción del plato"
                 ></textarea>
-                             {" "}
               </div>
-                           {" "}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                               {" "}
                 <div>
-                                   {" "}
                   <label
                     htmlFor="category"
                     className="block text-sm font-bold text-gray-700 mb-1"
                   >
-                                        Categoría                  {" "}
+                    Categoría
                   </label>
-                                   {" "}
+
                   <select
                     id="category"
                     name="category"
@@ -577,21 +508,18 @@ const GestionMenu = () => {
                     onChange={handleFormChange}
                     className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                   >
-                                       {" "}
                     {categorias.length === 0 && (
                       <option value="">Cargando...</option>
                     )}
-                                       {" "}
+
                     {categorias.map((c) => (
                       <option key={c.id} value={String(c.id)}>
-                                                {c.nombre}                     {" "}
+                        {c.nombre}
                       </option>
                     ))}
-                                     {" "}
                   </select>
-                                 {" "}
                 </div>
-                               {" "}
+
                 <InputField
                   label="Precio"
                   name="price"
@@ -599,20 +527,17 @@ const GestionMenu = () => {
                   value={editingItem.price}
                   onChange={handleFormChange}
                 />
-                             {" "}
               </div>
-                           {" "}
+
               <div>
-                               {" "}
                 <label
                   htmlFor="imagen-file"
                   className="block text-sm font-bold text-gray-700 mb-1"
                 >
-                                    Imagen                {" "}
+                  Imagen
                 </label>
-                               {" "}
+
                 <div className="flex items-center gap-4 p-3 border rounded-lg bg-gray-50">
-                                   {" "}
                   {editingItem.imagen && !imagenArchivo && (
                     <img
                       src={editingItem.imagen}
@@ -620,7 +545,7 @@ const GestionMenu = () => {
                       className="w-16 h-16 rounded object-cover border"
                     />
                   )}
-                                   {" "}
+
                   <input
                     id="imagen-file"
                     type="file"
@@ -629,20 +554,17 @@ const GestionMenu = () => {
                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-100 file:text-red-700 hover:file:bg-red-200"
                     aria-label="Seleccionar archivo de imagen"
                   />
-                                 {" "}
                 </div>
-                             {" "}
               </div>
-                           {" "}
+
               <div>
-                               {" "}
                 <label
                   htmlFor="disponibilidad"
                   className="block text-sm font-bold text-gray-700 mb-1"
                 >
-                                    Disponibilidad                {" "}
+                  Disponibilidad
                 </label>
-                               {" "}
+
                 <select
                   id="disponibilidad"
                   name="available"
@@ -651,42 +573,35 @@ const GestionMenu = () => {
                   className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
                   aria-label="Estado de disponibilidad del plato"
                 >
-                                    <option value="true">✅ Disponible</option> 
-                                  <option value="false">⛔ Agotado</option>     
-                           {" "}
+                  <option value="true">✅ Disponible</option>
+                  <option value="false">⛔ Agotado</option>
                 </select>
-                             {" "}
               </div>
-                         {" "}
             </div>
-                       {" "}
+
             <div className="bg-gray-50 p-4 flex justify-end gap-3 border-t">
-                           {" "}
               <button
                 type="button"
                 onClick={() => setEditingItem(null)}
                 className="px-5 py-2.5 rounded-lg text-gray-700 hover:bg-gray-200"
                 aria-label="Cancelar y cerrar formulario"
               >
-                                Cancelar              {" "}
+                Cancelar
               </button>
-                           {" "}
+
               <button
                 type="button"
                 onClick={handleSave}
                 className="px-5 py-2.5 bg-red-700 text-white rounded-lg hover:bg-red-800 font-bold shadow-md"
                 aria-label="Guardar cambios del plato"
               >
-                                Guardar              {" "}
+                Guardar
               </button>
-                         {" "}
             </div>
-                     {" "}
           </div>
-                 {" "}
         </div>
       )}
-            <NavBar />   {" "}
+      <NavBar />
     </div>
   );
 };

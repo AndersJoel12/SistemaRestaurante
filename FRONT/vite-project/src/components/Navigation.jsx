@@ -6,9 +6,10 @@ function NavBar() {
   // const location = useLocation();
   // const hiddenRoutes = ['/kitchen', '/'];
   // if (hiddenRoutes.includes(location.pathname)) return null;
-
+  //sticky top-0 z-50 bg-red-800 shadow-xl w-full
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-red-800 border-t border-red-900 shadow-2xl z-50">
+    
+    <nav className="fixed z-10 bottom-0 left-0 right-0 bg-red-800 border-t border-red-900 shadow-2xl">
       
       {/* Contenedor principal centrado */}
       <div className="w-full h-16 flex items-center justify-center">
