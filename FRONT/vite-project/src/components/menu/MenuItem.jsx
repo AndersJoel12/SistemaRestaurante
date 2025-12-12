@@ -1,161 +1,106 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
+// IMPORTANTE: Reutilizamos el componente que ya arreglamos. 
+// Asegúrate de que la ruta sea correcta.
+import Quantity from "../Quantity"; 
 
 const MenuItem = ({ dish, activeOrder, updateOrder }) => {
-  const itemInOrder = activeOrder?.find((item) => item.id === dish.id);
-  const quantity = itemInOrder ? itemInOrder.quantity : 0;
-  const [showControls, setShowControls] = useState(false);
+  
+  // 1. LÓGICA DE CANTIDAD
+  // Usamos useMemo para evitar buscar en el array en cada render si 'activeOrder' no cambia.
+  const quantity = useMemo(() => {
+    const itemInOrder = activeOrder?.find((item) => item.id === dish.id);
+    return itemInOrder ? itemInOrder.quantity : 0;
+  }, [activeOrder, dish.id]);
 
-  const handleUpdateQuantity = (change) => {
-    if (!dish.disponible && change > 0) return;
+  // 2. MANEJADORES DE EVENTOS
+  // Simplificamos la lógica delegando en updateOrder
+  const handleIncrease = () => {
+    if (!dish.disponible) return;
+    updateOrder(dish, quantity === 0 ? "add" : "update", quantity + 1);
+  };
 
-    const newQuantity = quantity + change;
-
-    if (newQuantity <= 0) {
+  const handleDecrease = () => {
+    if (quantity <= 0) return;
+    if (quantity === 1) {
       updateOrder(dish, "remove", 0);
-      setShowControls(false);
-    } else if (quantity === 0 && change > 0) {
-      updateOrder(dish, "add", newQuantity);
-      setShowControls(true);
     } else {
-      updateOrder(dish, "update", newQuantity);
+      updateOrder(dish, "update", quantity - 1);
     }
   };
 
+  // Clases dinámicas para la tarjeta
   const cardClasses = `
     flex flex-col justify-between bg-white 
-    p-3 sm:p-4 rounded-xl shadow-lg 
-    transform transition duration-300 
-    min-h-[300px] overflow-hidden
+    p-4 rounded-xl shadow-lg 
+    transform transition-all duration-300 
+    h-full border border-transparent
     ${
       dish.disponible
-        ? "hover:shadow-2xl hover:-translate-y-1"
-        : "opacity-50 cursor-not-allowed grayscale"
+        ? "hover:shadow-2xl hover:-translate-y-1 hover:border-red-100"
+        : "opacity-60 grayscale cursor-not-allowed"
     }
   `;
 
-  const buttonClass =
-    "rounded-full text-white font-bold transition-transform transform hover:scale-110 shadow-md flex items-center justify-center";
-
-  const getAvailabilityStatus = () => (
-    <span
-      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-        dish.disponible
-          ? "bg-green-100 text-green-800"
-          : "bg-red-100 text-red-800"
-      }`}
-    >
-      {dish.disponible ? "Disponible" : "Agotado"}
-    </span>
-  );
-
-  // 📱 Controles en móvil
-  const renderMobileControls = () => (
-    <div className="flex flex-col items-center mt-2 sm:hidden">
-      {/* Precio centrado */}
-      <span className="text-base font-extrabold text-black mb-2">
-        <span className="text-red-700">$</span>
-        {parseFloat(dish.precio || 0).toFixed(2)}
-        <span className="text-red-700 ml-1">Ref</span>
-      </span>
-
-      {/* Controles alineados */}
-      <div className="flex items-center space-x-2">
-        {/* Botón + */}
-        <button
-          onClick={() => handleUpdateQuantity(1)}
-          className={`${buttonClass} bg-green-500 hover:bg-green-600 w-8 h-8 text-sm`}
-          aria-label={`Añadir uno de ${dish.nombre}`}
-        >
-          +
-        </button>
-
-        {/* Mostrar cantidad y botón – solo si hay cantidad */}
-        {quantity > 0 && (
-          <>
-            <span className="w-8 text-center font-bold text-gray-800 bg-gray-100 rounded">
-              {quantity}
-            </span>
-            <button
-              onClick={() => handleUpdateQuantity(-1)}
-              className={`${buttonClass} bg-red-500 hover:bg-red-600 w-8 h-8 text-sm`}
-              aria-label={`Quitar uno de ${dish.nombre}`}
-            >
-              –
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-
-  // 💻 Controles en desktop
-  const renderDesktopControls = () => (
-    <div className="hidden sm:flex items-center justify-between mt-3">
-      <span className="flex items-center text-lg font-extrabold text-black">
-        <span className="text-red-700 mr-1">$</span>
-        {parseFloat(dish.precio || 0).toFixed(2)}
-        <span className="text-red-700 ml-1">Ref</span>
-      </span>
-
-      {dish.disponible ? (
-        <div className="flex items-center space-x-2">
-          {quantity > 0 && (
-            <button
-              onClick={() => handleUpdateQuantity(-1)}
-              className={`${buttonClass} bg-red-500 hover:bg-red-600 w-8 h-8 text-sm`}
-              aria-label={`Quitar uno de ${dish.nombre}`}
-            >
-              -
-            </button>
-          )}
-          {quantity > 0 && (
-            <span className="w-8 text-center font-bold text-gray-800 bg-gray-100 rounded">
-              {quantity}
-            </span>
-          )}
-          <button
-            onClick={() => handleUpdateQuantity(1)}
-            className={`${buttonClass} bg-green-500 hover:bg-green-600 w-8 h-8 text-sm`}
-            aria-label={`Añadir uno de ${dish.nombre}`}
-          >
-            +
-          </button>
-        </div>
-      ) : (
-        getAvailabilityStatus()
-      )}
-    </div>
-  );
-
   return (
-    <div className={cardClasses}>
-      {/* Imagen */}
-      <div className="mb-2">
-        <img
-          src={dish.imagen} /* "https://placehold.co/300x160/ef4444/ffffff?text=Plato%20No%20Image" */
-          alt={dish.nombre}
-          className="w-full h-36 sm:h-40 object-cover rounded-lg aspect-[3/2]"
-        />
-      </div>
+    <article className={cardClasses} aria-label={`Tarjeta del plato ${dish.nombre}`}>
+      
+      {/* SECCIÓN SUPERIOR: Imagen e Información */}
+      <div>
+        <div className="relative mb-3 overflow-hidden rounded-lg">
+          <img
+            src={dish.imagen || "https://placehold.co/300x200?text=Sin+Imagen"} 
+            alt={dish.nombre}
+            className="w-full h-40 object-cover transform transition-transform duration-500 hover:scale-105"
+            loading="lazy" // Mejora de rendimiento
+          />
+          
+          {/* Badge de Categoría flotante */}
+          <span className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-red-600 text-xs font-bold px-2 py-1 rounded-full shadow-sm">
+            {dish.categoria}
+          </span>
+        </div>
 
-      {/* Info */}
-      <div className="flex-grow">
-        <h3 className="text-lg sm:text-xl mt-1 font-bold text-gray-800 leading-tight">
+        <h3 className="text-lg font-extrabold text-gray-800 leading-tight mb-1">
           {dish.nombre}
         </h3>
-        <span className="mt-1 text-xs text-red-600 font-semibold px-2 py-0.5 bg-red-100 rounded-full uppercase tracking-wider inline-block">
-          {dish.categoria}
-        </span>
-        <p className="text-xs sm:text-sm text-gray-600 mt-2 mb-1 line-clamp-1 sm:line-clamp-2">
+        
+        <p className="text-sm text-gray-500 line-clamp-2 min-h-[2.5rem]">
           {dish.descripcion}
         </p>
       </div>
 
-      {/* Controles */}
-      {dish.disponible ? renderMobileControls() : getAvailabilityStatus()}
-      {dish.disponible && renderDesktopControls()}
-    </div>
+      {/* SECCIÓN INFERIOR: Precio y Controles */}
+      {/* Usamos Flexbox para alinear precio a la izq y controles a la der (o abajo en móvil) */}
+      <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        
+        {/* PRECIO */}
+        <div className="text-black font-extrabold text-xl flex items-baseline">
+          <span className="text-red-600 text-sm mr-0.5">$</span>
+          {parseFloat(dish.precio || 0).toFixed(2)}
+        </div>
+
+        {/* CONTROLES (Reutilizando Quantity) */}
+        {dish.disponible ? (
+           <div className="w-full sm:w-auto">
+             {/* Aquí sucede la MAGIA: 
+                Renderizamos el componente Quantity. Él se encarga de mostrar 
+                los botones y el número. Nosotros solo le pasamos las funciones.
+             */}
+             <Quantity 
+                value={quantity}
+                onIncrease={handleIncrease}
+                onDecrease={handleDecrease}
+             />
+           </div>
+        ) : (
+          <span className="inline-block bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full text-center">
+            Agotado
+          </span>
+        )}
+      </div>
+    </article>
   );
 };
 
+// React.memo evita re-renderizados si las props no cambian (bueno para listas largas)
 export default React.memo(MenuItem);

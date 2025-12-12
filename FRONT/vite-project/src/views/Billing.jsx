@@ -4,16 +4,15 @@ import { useNavigate } from "react-router-dom";
 import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
 
-// --- CONFIGURACIÓN ---
-const API_BASE = "http://localhost:8000/api"; // Ajusta si tu base cambia
+// CONFIGURACIÓN DE ENTORNO
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 const API_URL = `${API_BASE}/facturas`;
 const API_PEDIDOS = `${API_BASE}/pedidos`;
 const API_MESAS = `${API_BASE}/mesas`;
 
-// Emojis para métodos de pago
 const METODOS_PAGO = [
   { id: "EFECTIVO", label: "Efectivo", icon: "💵" },
-  { id: "TARJETA", label: "Tarjeta (Punto)", icon: "💳" },
+  { id: "TARJETA", label: "Tarjeta", icon: "💳" },
   { id: "PAGO_MOVIL", label: "Pago Móvil", icon: "📱" },
   { id: "ZELLE", label: "Zelle", icon: "🔄" },
 ];
@@ -21,16 +20,14 @@ const METODOS_PAGO = [
 const GenerarFactura = () => {
   const navigate = useNavigate();
 
-  // --- ESTADOS UI ---
+  // --- ESTADOS ---
   const [loading, setLoading] = useState(false);
   const [loadingPedidos, setLoadingPedidos] = useState(false);
   const [message, setMessage] = useState(null);
   const [success, setSuccess] = useState(false);
-
-  // --- ESTADOS DE DATOS ---
   const [listaPedidos, setListaPedidos] = useState([]);
+  const [errors, setErrors] = useState({});
 
-  // Estado del formulario
   const [formPago, setFormPago] = useState({
     pedidoId: "",
     impuesto: 0,
@@ -39,7 +36,6 @@ const GenerarFactura = () => {
     referencia: "",
   });
 
-  // Estado para datos del cliente
   const [requiereFactura, setRequiereFactura] = useState(false);
   const [datosCliente, setDatosCliente] = useState({
     cedula: "",
@@ -48,125 +44,71 @@ const GenerarFactura = () => {
     telefono: "",
   });
 
-  // --- 1. CARGA DE PEDIDOS ---
+  // --- CARGA DE PEDIDOS ---
   const obtenerPedidos = useCallback(async () => {
     setLoadingPedidos(true);
     try {
-      // Buscamos los pedidos que el mesero envió a "Cerrar" (POR_FACTURAR)
       const response = await axios.get(`${API_PEDIDOS}/?estado=POR_FACTURAR`);
-
       if (Array.isArray(response.data)) {
-        // Filtrado de seguridad
-        const pedidosPorCobrar = response.data.filter(
-          (p) => p.estado_pedido === "POR_FACTURAR"
-        );
-
+        const pedidosPorCobrar = response.data.filter(p => p.estado_pedido === "POR_FACTURAR");
         setListaPedidos(pedidosPorCobrar);
-
-        // Si el pedido seleccionado ya no existe, limpiamos el form
-        if (
-          !pedidosPorCobrar.find(
-            (p) => String(p.id) === String(formPago.pedidoId)
-          )
-        ) {
-          setFormPago((prev) => ({ ...prev, pedidoId: "" }));
-        }
       }
     } catch (error) {
-      console.error("Error al cargar pedidos:", error);
-      setMessage({
-        type: "error",
-        text: "Error de conexión al buscar pedidos por facturar.",
-      });
+      console.error("Error cargando pedidos:", error);
+      setMessage({ type: "error", text: "Error cargando pedidos pendientes." });
     } finally {
       setLoadingPedidos(false);
     }
-  }, [formPago.pedidoId]);
+  }, []);
 
   useEffect(() => {
     obtenerPedidos();
   }, [obtenerPedidos]);
 
-  // --- 2. CÁLCULOS AUTOMÁTICOS ---
+  // --- CÁLCULOS ---
   const totalPagar = useMemo(() => {
     if (!formPago.pedidoId) return "0.00";
+    const pedido = listaPedidos.find(p => String(p.id) === String(formPago.pedidoId));
+    
+    const base = pedido?.CostoTotal ? parseFloat(pedido.CostoTotal) : 0;
+    const tax = parseFloat(formPago.impuesto) || 0;
+    const disc = parseFloat(formPago.descuento) || 0;
 
-    const pedidoSeleccionado = listaPedidos.find(
-      (p) => String(p.id) === String(formPago.pedidoId)
-    );
-    // Usamos ?. para seguridad, aunque ya se validó que exista
-    const costoBase = pedidoSeleccionado?.CostoTotal
-      ? parseFloat(pedidoSeleccionado.CostoTotal)
-      : 0;
-
-    const impuesto = parseFloat(formPago.impuesto) || 0;
-    const descuento = parseFloat(formPago.descuento) || 0;
-
-    return (costoBase + impuesto - descuento).toFixed(2);
+    const total = Math.max(0, base + tax - disc); 
+    return total.toFixed(2);
   }, [formPago.pedidoId, formPago.impuesto, formPago.descuento, listaPedidos]);
 
-  // --- 3. VALIDACIONES ---
-  const esReferenciaValida =
-    formPago.metodoPago === "EFECTIVO" ||
-    (formPago.referencia && formPago.referencia.length >= 6);
-
   // --- HANDLERS ---
-  const handleSeleccionarPedido = (e) => {
-    setFormPago({ ...formPago, pedidoId: e.target.value });
-  };
-
   const handleFormChange = (e) => {
     setFormPago({ ...formPago, [e.target.name]: e.target.value });
-  };
-
-  const handleReferenciaChange = (e) => {
-    let valorInput = e.target.value || "";
-    const soloNumeros = valorInput.replace(/[^0-9]/g, "");
-    setFormPago((prev) => ({ ...prev, referencia: soloNumeros }));
+    if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: null });
   };
 
   const handleClienteChange = (e) => {
     setDatosCliente({ ...datosCliente, [e.target.name]: e.target.value });
+    if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: null });
   };
 
-  // 🔥 LÓGICA DE PROCESAMIENTO (CORREGIDA)
   const handleProcesarPago = async () => {
     setLoading(true);
     setMessage(null);
+    const newErrors = {};
 
-    // Validaciones previas
-    if (!formPago.pedidoId) {
-      setMessage({
-        type: "error",
-        text: "Debes seleccionar un Pedido para cobrar.",
-      });
-      setLoading(false);
-      return;
-    }
-    if (formPago.metodoPago !== "EFECTIVO" && !esReferenciaValida) {
-      setMessage({
-        type: "error",
-        text: "Referencia incompleta (mínimo 6 dígitos).",
-      });
-      setLoading(false);
-      return;
+    if (!formPago.pedidoId) newErrors.pedidoId = "Seleccione un pedido.";
+    if (formPago.metodoPago !== "EFECTIVO" && (!formPago.referencia || formPago.referencia.length < 6)) {
+      newErrors.referencia = "Referencia incompleta (min 6).";
     }
     if (requiereFactura) {
-      if (!datosCliente.cedula.trim() || !datosCliente.nombre.trim()) {
-        setMessage({
-          type: "error",
-          text: "Cédula y Nombre son obligatorios para factura fiscal.",
-        });
-        setLoading(false);
-        return;
-      }
+      if (!datosCliente.cedula.trim()) newErrors.cedula = "Cédula requerida.";
+      if (!datosCliente.nombre.trim()) newErrors.nombre = "Nombre requerido.";
     }
 
-    // Buscar datos de la mesa antes de enviar
-    const pedidoActual = listaPedidos.find(
-      (p) => String(p.id) === String(formPago.pedidoId)
-    );
-    const mesaIdALiberar = pedidoActual ? pedidoActual.mesa_id : null;
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setLoading(false);
+      setMessage({ type: "error", text: "Por favor corrija los errores marcados." });
+      return;
+    }
 
     const payload = {
       pedido_id: parseInt(formPago.pedidoId, 10),
@@ -174,73 +116,35 @@ const GenerarFactura = () => {
       impuesto: parseFloat(formPago.impuesto) || 0,
       descuento: parseFloat(formPago.descuento) || 0,
       referencia_pago: formPago.referencia,
-      cliente_nombre: requiereFactura
-        ? datosCliente.nombre
-        : "Consumidor Final",
+      cliente_nombre: requiereFactura ? datosCliente.nombre : "Consumidor Final",
       cliente_cedula: requiereFactura ? datosCliente.cedula : "0",
       cliente_direccion: requiereFactura ? datosCliente.direccion : "N/A",
       cliente_telefono: requiereFactura ? datosCliente.telefono : "N/A",
     };
 
     try {
-      // 1. Crear la Factura
       await axios.post(`${API_URL}/`, payload);
-
-      // 2. Liberar la Mesa (Si aplica)
-      if (mesaIdALiberar) {
-        try {
-          // 🔥 CORRECCIÓN APLICADA: Enviamos BOOLEANO (true) no string
-          // Se asume que el backend interpreta 'estado: true' como 'libre'
-          await axios.patch(`${API_MESAS}/${mesaIdALiberar}/`, {
-            estado: true,
-          });
-          console.log(`✅ Mesa ${mesaIdALiberar} liberada.`);
-        } catch (errorMesa) {
-          console.error("⚠️ Error liberando mesa:", errorMesa.response?.data);
-        }
+      const pedido = listaPedidos.find(p => String(p.id) === String(formPago.pedidoId));
+      if (pedido?.mesa_id) {
+        await axios.patch(`${API_MESAS}/${pedido.mesa_id}/`, { estado: true });
       }
 
       setSuccess(true);
-      setMessage({
-        type: "success",
-        text: "¡Cobro exitoso! Factura generada.",
-      });
-
-      // Limpieza UI
-      setListaPedidos((prev) =>
-        prev.filter((p) => p.id !== parseInt(formPago.pedidoId))
-      );
-
+      setMessage({ type: "success", text: "¡Cobro registrado exitosamente!" });
+      
       setTimeout(() => {
         setSuccess(false);
-        setFormPago({
-          pedidoId: "",
-          impuesto: 0,
-          descuento: 0,
-          metodoPago: "EFECTIVO",
-          referencia: "",
-        });
+        setFormPago(prev => ({ ...prev, pedidoId: "", impuesto: 0, descuento: 0, referencia: "" }));
         setRequiereFactura(false);
-        setDatosCliente({
-          cedula: "",
-          nombre: "",
-          direccion: "",
-          telefono: "",
-        });
+        setDatosCliente({ cedula: "", nombre: "", direccion: "", telefono: "" });
+        setErrors({});
         setMessage(null);
-        obtenerPedidos(); // Refresca la lista de pedidos pendientes
-      }, 3000);
+        obtenerPedidos();
+      }, 2500);
+
     } catch (error) {
-      console.error("Error al procesar pago:", error);
-      const errData = error.response?.data;
-      let errorMsg = "Error de conexión o servidor.";
-      if (errData && typeof errData === "object") {
-        const values = Object.values(errData);
-        errorMsg = Array.isArray(values[0])
-          ? values[0][0]
-          : JSON.stringify(values[0]);
-      }
-      setMessage({ type: "error", text: errorMsg });
+      console.error("Error facturando:", error);
+      setMessage({ type: "error", text: "Error al procesar la factura." });
     } finally {
       setLoading(false);
     }
@@ -248,352 +152,231 @@ const GenerarFactura = () => {
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 animate-fade-in-down">
-        <div className="bg-green-100 p-6 rounded-full mb-4 text-4xl">✅</div>
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">
-          ¡Factura Generada!
-        </h2>
-        <p className="text-gray-600 mb-6 text-lg">
-          El ciclo de venta se ha completado correctamente.
-        </p>
-        <button
-          onClick={() => setSuccess(false)}
-          className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition"
-        >
-          Nueva Operación
-        </button>
+      <div role="alert" aria-live="assertive" className="flex flex-col items-center justify-center min-h-[60vh] animate-bounce-in">
+        <div className="bg-green-100 p-8 rounded-full mb-6 text-6xl shadow-inner" aria-hidden="true">✅</div>
+        <h2 className="text-3xl font-black text-gray-800">¡Pago Aprobado!</h2>
+        <p className="text-gray-500 mt-2">La factura se ha guardado y la mesa liberada.</p>
       </div>
     );
   }
 
   return (
-    // 🎯 CORRECCIÓN 1: Contenedor principal para el scroll y flex vertical.
-    <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans flex flex-col items-center overflow-x-hidden">
-      {/* 🎯 CORRECCIÓN 2: Se mantiene la grilla, pero en móvil (o zoom), se apila (grid-cols-1) */}
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* COLUMNA IZQUIERDA (Principal) */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-red-600">
-            {/* CABECERA */}
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-              {" "}
-              {/* flex-wrap para zoom en móvil */}
-              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                💰 Caja / Facturación
+    // MAIN: Indica que este es el contenido principal de la página
+    <main className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans flex flex-col items-center">
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* COLUMNA IZQUIERDA */}
+        <section className="lg:col-span-2 space-y-6" aria-labelledby="billing-title">
+          <div className="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-red-600">
+            
+            <header className="flex justify-between items-center mb-6">
+              <h2 id="billing-title" className="text-2xl font-black text-gray-800 flex items-center gap-2">
+                💰 Caja y Facturación
               </h2>
-              <button
-                onClick={() => navigate("/orders")}
-                className="text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-600 px-4 py-2 rounded-lg transition-colors font-semibold flex items-center gap-1"
+              <button 
+                onClick={() => navigate("/orders")} 
+                className="text-sm font-bold text-gray-500 hover:text-red-600 transition"
+                aria-label="Volver a la gestión de pedidos"
               >
-                ⬅️ Volver a Pedidos
+                ⬅ Volver
               </button>
-            </div>
+            </header>
 
             {/* SELECCIÓN DE PEDIDO */}
-            <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-              <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
-                {" "}
-                {/* flex-wrap para zoom en móvil */}
-                <label className="text-sm font-bold text-gray-500 uppercase flex items-center gap-2">
-                  Pedidos por Cobrar *
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      listaPedidos.length > 0
-                        ? "bg-red-100 text-red-700"
-                        : "bg-gray-200 text-gray-500"
-                    }`}
-                  >
-                    {listaPedidos.length} Pendientes
-                  </span>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
+               <InputField 
+                 type="select"
+                 label="Pedido a Cobrar"
+                 name="pedidoId"
+                 id="pedidoId" // ID explícito
+                 value={formPago.pedidoId}
+                 onChange={handleFormChange}
+                 error={errors.pedidoId}
+                 options={listaPedidos.map(p => ({
+                   value: p.id,
+                   label: `Pedido #${p.id} - Mesa ${p.mesa_id || 'Barra'} ($${p.CostoTotal})`
+                 }))}
+                 placeholder={loadingPedidos ? "Cargando..." : "-- Seleccione Pedido --"}
+                 disabled={loadingPedidos}
+                 className="text-lg font-bold"
+                 required // Semántica HTML5
+               />
+            </div>
+
+            {/* IMPUESTOS Y DESCUENTOS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField 
+                type="number" 
+                label="Impuesto Adicional ($)" 
+                name="impuesto" 
+                id="impuesto"
+                value={formPago.impuesto} 
+                onChange={handleFormChange}
+                placeholder="0.00"
+                min="0"
+              />
+              <InputField 
+                type="number" 
+                label="Descuento ($)" 
+                name="descuento" 
+                id="descuento"
+                value={formPago.descuento} 
+                onChange={handleFormChange} 
+                className="text-green-600 font-bold"
+                placeholder="0.00"
+                min="0"
+              />
+            </div>
+
+            {/* TOTAL GIGANTE - LIVE REGION */}
+            {/* aria-live="polite": Anuncia el cambio de precio sin interrumpir al usuario */}
+            <div 
+              className="bg-gray-900 text-white p-6 rounded-2xl text-center shadow-lg my-6 transform transition-transform hover:scale-[1.01]"
+              role="status" 
+              aria-live="polite"
+              aria-label="Total neto a pagar calculado"
+            >
+              <p className="text-gray-400 text-sm uppercase tracking-widest mb-1" aria-hidden="true">Total Neto a Pagar</p>
+              <p className="text-5xl font-black tracking-tight">${totalPagar}</p>
+            </div>
+
+            {/* MÉTODOS DE PAGO - RADIOGROUP */}
+            <div role="radiogroup" aria-labelledby="payment-method-label">
+                <label id="payment-method-label" className="block text-sm font-bold text-gray-700 capitalize mb-2">
+                    Método de Pago
                 </label>
-                <button
-                  onClick={obtenerPedidos}
-                  disabled={loadingPedidos}
-                  className="text-xs bg-white border border-gray-300 hover:bg-gray-100 text-gray-600 px-3 py-1 rounded-lg shadow-sm flex items-center gap-1 transition-all"
-                >
-                  {loadingPedidos ? (
-                    <span className="animate-spin">↻</span>
-                  ) : (
-                    "🔄"
-                  )}{" "}
-                  Refrescar
-                </button>
-              </div>
-
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-xl">
-                  🛍️
-                </span>
-                <select
-                  name="pedidoId"
-                  value={formPago.pedidoId}
-                  onChange={handleSeleccionarPedido}
-                  disabled={loadingPedidos}
-                  // Añadimos w-full explícito para mejor reflow
-                  className="w-full pl-12 pr-4 py-3 text-lg font-bold text-gray-800 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white appearance-none cursor-pointer disabled:bg-gray-100"
-                >
-                  <option value="">
-                    {loadingPedidos
-                      ? "Buscando pedidos..."
-                      : "-- Seleccione Pedido a Cobrar --"}
-                  </option>
-                  {listaPedidos.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      Pedido #{p.id}{" "}
-                      {p.mesa_id ? `- Mesa ${p.mesa_id}` : "(Barra/Llevar)"} - $
-                      {parseFloat(p.CostoTotal).toFixed(2)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {listaPedidos.length === 0 && !loadingPedidos && (
-                <div className="mt-2 flex items-center gap-2 text-blue-600 bg-blue-50 p-2 rounded-lg text-xs font-bold border border-blue-200">
-                  <span>ℹ️</span>
-                  <span>No hay pedidos enviados a caja.</span>
-                </div>
-              )}
-            </div>
-
-            {/* FORMULARIO DE MONTOS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              {" "}
-              {/* Aseguramos grid-cols-1 en móvil, sm:grid-cols-2 en tablet/zoom normal */}
-              <div>
-                <label className="block text-sm font-bold text-gray-500 uppercase mb-2">
-                  Impuesto ($)
-                </label>
-                <input
-                  type="number"
-                  name="impuesto"
-                  value={formPago.impuesto}
-                  onChange={handleFormChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-500 uppercase mb-2">
-                  Descuento ($)
-                </label>
-                <input
-                  type="number"
-                  name="descuento"
-                  value={formPago.descuento}
-                  onChange={handleFormChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 text-green-600 font-semibold"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            {/* DISPLAY TOTAL */}
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-gray-500 uppercase mb-2">
-                Monto Total a Pagar ($)
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
-                  $
-                </span>
-                <input
-                  type="text"
-                  readOnly
-                  value={totalPagar}
-                  className="w-full pl-10 pr-4 py-4 text-4xl font-extrabold text-gray-800 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 transition-colors bg-gray-50"
-                  placeholder="0.00"
-                />
-              </div>
-              <p className="text-xs text-orange-500 mt-1 font-medium">
-                * Incluye impuestos y descuentos.
-              </p>
-            </div>
-
-            {/* MÉTODOS DE PAGO */}
-            <div className="mb-6">
-              <label className="block text-sm font-bold text-gray-500 uppercase mb-3">
-                Método de Pago
-              </label>
-              {/* 🎯 CORRECCIÓN 3: Ajustar grid de botones para zoom (2 columnas en móvil) */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {METODOS_PAGO.map((metodo) => (
-                  <button
-                    key={metodo.id}
-                    onClick={() =>
-                      setFormPago({ ...formPago, metodoPago: metodo.id })
-                    }
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 ${
-                      formPago.metodoPago === metodo.id
-                        ? "border-red-600 bg-red-50 text-red-700 shadow-md scale-100" // Quitamos el scale-105 para evitar que se desborde al hacer zoom
-                        : "border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="mb-2 text-2xl">{metodo.icon}</div>
-                    <span className="text-xs font-bold">{metodo.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* REFERENCIA INPUT */}
-            {formPago.metodoPago !== "EFECTIVO" && (
-              <div className="animate-fade-in-up">
-                <InputField
-                  label={
-                    <div className="flex justify-between items-center flex-wrap gap-2">
-                      <span>🔢 Nro Referencia (Últimos 6)</span>
-                      <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          formPago.referencia.length >= 6
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-600"
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                {METODOS_PAGO.map((metodo) => {
+                    const isSelected = formPago.metodoPago === metodo.id;
+                    return (
+                    <button
+                        key={metodo.id}
+                        type="button" // Evita submit accidental
+                        role="radio"  // Semántica de opción única
+                        aria-checked={isSelected}
+                        aria-label={`Pagar con ${metodo.label}`}
+                        onClick={() => setFormPago({ ...formPago, metodoPago: metodo.id })}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                        isSelected
+                            ? "border-red-600 bg-red-50 text-red-700 font-bold shadow-md"
+                            : "border-gray-100 text-gray-500 hover:bg-gray-50"
                         }`}
-                      >
-                        {formPago.referencia.length}/6
-                      </span>
-                    </div>
-                  }
-                  name="referencia"
-                  value={formPago.referencia}
-                  onChange={handleReferenciaChange}
-                  placeholder="Ej: 884291"
-                />
-                {!esReferenciaValida && (
-                  <p className="text-xs text-red-500 mt-1 ml-1 animate-pulse">
-                    * Requerido para pagos digitales.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-          <MessageAlert msg={message} />
-        </div>
+                    >
+                        <span className="text-2xl mb-1" aria-hidden="true">{metodo.icon}</span>
+                        <span className="text-xs">{metodo.label}</span>
+                    </button>
+                    );
+                })}
+                </div>
+            </div>
 
-        {/* COLUMNA DERECHA - DATOS CLIENTE */}
-        <div className="lg:col-span-1">
-          <div
-            className={`p-6 rounded-2xl shadow-lg border transition-all duration-300 ${
-              requiereFactura
-                ? "bg-white border-blue-500"
-                : "bg-gray-50 border-gray-200"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-              <h2 className="text-xl font-bold text-gray-700 flex items-center gap-2">
-                📄 Factura Fiscal
-              </h2>
-              <label
-                className="relative inline-flex items-center cursor-pointer"
-                title="Solicitar Factura Fiscal"
-              >
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={requiereFactura}
-                  onChange={() => setRequiereFactura(!requiereFactura)}
+            {/* REFERENCIA */}
+            {formPago.metodoPago !== "EFECTIVO" && (
+              <InputField 
+                label="Referencia de Pago"
+                name="referencia"
+                id="referencia"
+                value={formPago.referencia}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, ""); 
+                  setFormPago({ ...formPago, referencia: val });
+                  if(errors.referencia) setErrors({...errors, referencia: null});
+                }}
+                error={errors.referencia}
+                placeholder="Ej: 994821"
+                maxLength={20}
+                aria-required="true" // Indica que es obligatorio en este contexto
+              />
+            )}
+
+            <MessageAlert msg={message} />
+          </div>
+        </section>
+
+        {/* COLUMNA DERECHA */}
+        <aside className="lg:col-span-1" aria-labelledby="fiscal-data-title">
+          <div className={`p-6 rounded-2xl shadow-lg border-2 transition-colors duration-300 ${requiereFactura ? 'bg-white border-blue-500' : 'bg-gray-100 border-dashed border-gray-300'}`}>
+            
+            <div className="flex justify-between items-center mb-6">
+              <h3 id="fiscal-data-title" className="font-bold text-gray-700 flex gap-2 items-center">
+                📄 Datos Fiscales
+              </h3>
+              
+              {/* SWITCH ACCESIBLE */}
+              <label className="flex items-center cursor-pointer relative">
+                <span className="sr-only">Habilitar Factura Fiscal</span>
+                <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={requiereFactura} 
+                    onChange={() => setRequiereFactura(!requiereFactura)} 
+                    role="switch" 
+                    aria-checked={requiereFactura}
                 />
-                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
 
             {!requiereFactura ? (
-              <div className="text-center py-8 text-gray-400">
-                <div className="text-4xl mb-2">👤</div>
+              <div className="text-center py-12 text-gray-400 opacity-60" aria-hidden="true">
+                <p className="text-5xl mb-2">👤</p>
                 <p className="font-medium">Consumidor Final</p>
-                <p className="text-xs">Sin datos fiscales específicos.</p>
               </div>
             ) : (
-              <div className="space-y-4 animate-fade-in">
-                <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-800 mb-4 border border-blue-100">
-                  Ingrese los datos fiscales del cliente.
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    Cédula / RIF *
-                  </label>
-                  <input
-                    type="text"
-                    name="cedula"
-                    value={datosCliente.cedula}
-                    onChange={handleClienteChange}
-                    // Añadimos w-full para asegurar el reflow en zoom
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="V-12345678"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    Nombre / Razón Social *
-                  </label>
-                  <input
-                    type="text"
-                    name="nombre"
-                    value={datosCliente.nombre}
-                    onChange={handleClienteChange}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Nombre Fiscal"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    Dirección Fiscal
-                  </label>
-                  <textarea
-                    name="direccion"
-                    value={datosCliente.direccion}
-                    onChange={handleClienteChange}
-                    rows="2"
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                    placeholder="Dirección..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    name="telefono"
-                    value={datosCliente.telefono}
-                    onChange={handleClienteChange}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="0414-..."
-                  />
-                </div>
+              <div className="space-y-2 animate-fade-in">
+                <InputField 
+                  label="Cédula / RIF" 
+                  name="cedula" 
+                  id="cedula"
+                  value={datosCliente.cedula} 
+                  onChange={handleClienteChange} 
+                  error={errors.cedula}
+                  placeholder="V-12345678"
+                  required
+                />
+                <InputField 
+                  label="Nombre / Razón Social" 
+                  name="nombre" 
+                  id="nombre"
+                  value={datosCliente.nombre} 
+                  onChange={handleClienteChange} 
+                  error={errors.nombre}
+                  required
+                />
+                <InputField 
+                  label="Dirección" 
+                  name="direccion" 
+                  id="direccion"
+                  value={datosCliente.direccion} 
+                  onChange={handleClienteChange} 
+                />
+                <InputField 
+                  label="Teléfono" 
+                  name="telefono" 
+                  id="telefono"
+                  type="tel"
+                  value={datosCliente.telefono} 
+                  onChange={handleClienteChange} 
+                />
               </div>
             )}
 
-            <div className="mt-8 border-t pt-6">
+            <div className="mt-8 pt-6 border-t border-gray-200">
               <button
                 onClick={handleProcesarPago}
-                disabled={
-                  loading ||
-                  !formPago.pedidoId ||
-                  (formPago.metodoPago !== "EFECTIVO" && !esReferenciaValida)
-                }
-                className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95 flex justify-center items-center gap-2 
-                                ${
-                                  loading ||
-                                  !formPago.pedidoId ||
-                                  (formPago.metodoPago !== "EFECTIVO" &&
-                                    !esReferenciaValida)
-                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                    : "bg-green-600 text-white hover:bg-green-700 hover:shadow-green-200"
-                                }`}
+                disabled={loading}
+                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-black text-lg rounded-xl shadow-lg transition-transform active:scale-95 disabled:bg-gray-400 disabled:cursor-not-allowed flex justify-center gap-2"
+                aria-label={loading ? "Procesando pago, por favor espere" : "Confirmar pago y generar factura"}
               >
-                {loading ? (
-                  <span>Procesando...</span>
-                ) : (
-                  <>
-                    <span>✅</span> Facturar y Cerrar
-                  </>
-                )}
+                {loading ? "Procesando..." : "CONFIRMAR PAGO ✅"}
               </button>
             </div>
+
           </div>
-        </div>
+        </aside>
+
       </div>
-    </div>
+    </main>
   );
 };
 

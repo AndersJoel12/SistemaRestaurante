@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import TableCell from "./TableCell";
-import ArrowFluctuation from "./ArrowFluctuation"; // Asumimos que existe
+// import ArrowFluctuation from "./ArrowFluctuation"; // Descomenta si lo usas
 
-// CONFIGURACIÓN
-const API_URL = "http://localhost:8000/api/mesas";
+// 1. CONFIGURACIÓN PROFESIONAL
+// Usamos variables de entorno. Si no existe, usa localhost por defecto.
+const API_URL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/mesas` 
+  : "http://localhost:8000/api/mesas";
 
-// Función de transformación de datos de la API
 const transformData = (apiMesas) => {
   return apiMesas.map((mesa) => ({
     id: mesa.id,
@@ -18,18 +20,19 @@ const transformData = (apiMesas) => {
   }));
 };
 
-// Acepta los nuevos props, incluyendo onCancelAction
-const TablesGrid = ({
-  onNavigateToMenu,
-  onTableSelect,
-  selectedTableId,
-  onCancelAction, // 🔥 Recibimos la función de Cancelar del padre
-}) => {
-  const navigate = useNavigate(); // Estados
+const TablesGrid = ({ onNavigateToMenu }) => {
+  const navigate = useNavigate();
 
+  // Estados
   const [tables, setTables] = useState([]);
-  const [numPersonas, setNumPersonas] = useState("");
-  const [loading, setLoading] = useState(true); // CLAVE: Derivamos la mesa seleccionada del prop selectedTableId
+  const [selectedTableNumber, setSelectedTableNumber] = useState(null);
+  
+  // UX: Permitimos string vacío para facilitar el borrado
+  const [numPersonas, setNumPersonas] = useState(""); 
+  const [loading, setLoading] = useState(true);
+  
+  // UX: Estado para mostrar errores al usuario (no solo en consola)
+  const [errorMsg, setErrorMsg] = useState(""); 
 
   const currentSelectedTable =
     tables.find((t) => t.id === selectedTableId) || null; // --- CARGAR MESAS ---
@@ -38,11 +41,12 @@ const TablesGrid = ({
     const fetchMesas = async () => {
       try {
         const response = await axios.get(`${API_URL}/`);
-        const transformedTables = transformData(response.data);
-        transformedTables.sort((a, b) => a.number - b.number);
+        // Ordenamos por número para que aparezcan 1, 2, 3...
+        const transformedTables = transformData(response.data).sort((a, b) => a.number - b.number);
         setTables(transformedTables);
       } catch (error) {
         console.error("🔴 Error cargando mesas:", error);
+        setErrorMsg("Error de conexión con el servidor.");
       } finally {
         setLoading(false);
       }
@@ -50,42 +54,75 @@ const TablesGrid = ({
     fetchMesas();
   }, []); // --- MANEJAR SELECCIÓN (Llama al toggle en TablesView) ---
 
+  // --- MANEJAR SELECCIÓN ---
   const handleSelect = (table) => {
-    onTableSelect(table); // Limpiamos el input de personas al seleccionar una nueva mesa
-    if (!currentSelectedTable || currentSelectedTable.id !== table.id) {
-      setNumPersonas("");
-    }
-  }; // --- APARTAR MESA LIBRE ---
+    setSelectedTableNumber(table.number);
+    setNumPersonas(""); // Reiniciar input
+    setErrorMsg("");    // Limpiar errores previos
+  };
 
-  const handleApartar = async () => {
-    if (
-      !currentSelectedTable ||
-      currentSelectedTable.status !== "libre" ||
-      !numPersonas
-    ) {
-      console.error("Faltan datos para apartar la mesa.");
+  // --- VALIDACIÓN DE INPUT EN TIEMPO REAL ---
+  const handlePersonasChange = (e) => {
+    const value = e.target.value;
+    setErrorMsg(""); // Limpiamos error al escribir
+
+    // Si está vacío, lo permitimos (para poder borrar)
+    if (value === "") {
+      setNumPersonas("");
       return;
+    }
+
+    const num = parseInt(value, 10);
+
+    // Validación defensiva
+    if (isNaN(num)) return;
+
+    if (currentSelectedTable && num > currentSelectedTable.capacity) {
+      setErrorMsg(`¡La mesa solo tiene ${currentSelectedTable.capacity} sillas!`);
+      // Aún así permitimos escribirlo visualmente o lo bloqueamos según prefieras. 
+      // Aquí lo permito pero muestro error y bloquearé el botón.
+    }
+    
+    setNumPersonas(num);
+  };
+
+  // --- APARTAR MESA LIBRE ---
+  const handleApartar = async () => {
+    if (!currentSelectedTable || !numPersonas) return;
+
+    // Validación final antes de enviar
+    if (numPersonas > currentSelectedTable.capacity) {
+        setErrorMsg("Excede la capacidad máxima.");
+        return;
     }
 
     try {
       setLoading(true);
+
+      // 1. Backend: Ocupar la mesa (PATCH)
       await axios.patch(`${API_URL}/${currentSelectedTable.id}/`, {
-        estado: false,
+        estado: false, // Ocupada
       });
+
+      // 2. Frontend: Preparar objeto
       const mesaActiva = {
         id: currentSelectedTable.id,
         number: currentSelectedTable.number,
         capacity: currentSelectedTable.capacity,
         personas: numPersonas,
       };
+
+      // 3. Navegación
       if (onNavigateToMenu) {
         onNavigateToMenu(mesaActiva);
+      } else {
+        // Fallback robusto por si falta la prop
+        sessionStorage.setItem("mesa_activa", JSON.stringify(mesaActiva));
+        navigate("/menu"); 
       }
     } catch (error) {
-      console.error(
-        "Error al ocupar mesa:",
-        error.response?.data || error.message
-      );
+      console.error("Error al ocupar:", error);
+      setErrorMsg("No se pudo reservar la mesa. Intente nuevamente.");
       setLoading(false);
     }
   }; // --- CONTINUAR (SI LA MESA YA ESTABA OCUPADA) ---
@@ -99,22 +136,22 @@ const TablesGrid = ({
       };
       sessionStorage.setItem("mesa_activa", JSON.stringify(mesaActiva));
     }
+
     navigate("/orders", {
       state: {
-        mesaId: currentSelectedTable.id,
-        numeroMesa: currentSelectedTable.number,
+        mesaId: currentSelectedTable?.id,
+        numeroMesa: currentSelectedTable?.number,
       },
     });
   }; // --- RENDERIZADO ---
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 bg-gray-100 min-h-screen flex items-center justify-center">
-               {" "}
+      <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center animate-pulse">
-                    <span className="text-4xl mb-2">🍽️</span>         {" "}
-          <div className="text-xl font-bold text-red-800">
-                        Cargando Restaurante...          {" "}
+          <span className="text-5xl mb-4">🍽️</span>
+          <div className="text-xl font-bold text-red-800 tracking-wider">
+            Cargando Restaurante...
           </div>
                  {" "}
         </div>
@@ -124,123 +161,108 @@ const TablesGrid = ({
   }
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-100 min-h-screen flex flex-col items-center justify-start">
-           {" "}
-      <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-sm md:max-w-xl lg:max-w-2xl">
-               {" "}
-        <h1 className="text-2xl sm:text-3xl font-extrabold mb-4 text-red-800 text-center">
-                    VISTA DE MESAS        {" "}
+    <div className="p-4 sm:p-6 bg-gray-100 min-h-screen flex flex-col items-center">
+      
+      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-4xl border border-gray-200">
+        <h1 className="text-3xl font-black mb-8 text-red-800 text-center tracking-tight border-b pb-4">
+          MAPA DE MESAS
         </h1>
-               {" "}
-        <div className="grid gap-4 mx-auto grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-4">
-                   {" "}
+
+        {/* FEEDBACK DE ERROR GENERAL (ej: fallo de conexión) */}
+        {errorMsg && !currentSelectedTable && (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded" role="alert">
+                <p>{errorMsg}</p>
+            </div>
+        )}
+
+        {/* GRID RESPONSIVE */}
+        <div className="grid gap-6 grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 justify-items-center">
           {tables.map((table) => (
             <TableCell
               key={table.number}
               table={table}
               isSelected={selectedTableId === table.id}
               onSelect={handleSelect}
-              ocupacion={0}
             />
           ))}
                  {" "}
         </div>
-                {/* BLOQUE DE ACCIÓN CONDICIONAL */}       
-        {/* APARTAR MESA LIBRE (Mesa Seleccionada Y Libre) */}       {" "}
-        {currentSelectedTable && currentSelectedTable.status === "libre" && (
-          <div className="mt-6 flex flex-col gap-4 animate-fade-in-up">
-                       {" "}
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                           {" "}
-              <h3 className="font-bold text-green-800 mb-2">
-                                Mesa {currentSelectedTable.number} Disponible  
-                           {" "}
-              </h3>
-                           {" "}
-              <div className="flex items-center gap-2 justify-between">
-                               {" "}
-                <label className="font-semibold text-gray-700 text-sm">
-                                    Personas:                {" "}
-                </label>
-                               {" "}
-                <input
-                  type="number"
-                  value={numPersonas}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value, 10);
-                    if (
-                      !isNaN(value) &&
-                      value <= currentSelectedTable.capacity
-                    ) {
-                      setNumPersonas(value);
-                    }
-                  }}
-                  className="border rounded-lg p-2 w-20 text-center focus:ring-2 focus:ring-blue-500 outline-none"
-                  min="1"
-                  max={currentSelectedTable.capacity}
-                  placeholder="1"
-                />
-                             {" "}
+
+        {/* --- PANEL DE ACCIÓN (Aparece al seleccionar) --- */}
+        {currentSelectedTable && (
+          <div className="mt-8 pt-6 border-t border-gray-100 animate-fade-in-up">
+            
+            {/* CASO 1: MESA LIBRE */}
+            {currentSelectedTable.status === "libre" ? (
+              <div className="bg-green-50 p-6 rounded-xl border border-green-200 shadow-inner">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  
+                  <div>
+                    <h3 className="text-xl font-bold text-green-800">
+                      Mesa {currentSelectedTable.number} Disponible
+                    </h3>
+                    <p className="text-green-600 text-sm">
+                      Capacidad: {currentSelectedTable.capacity} personas
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="num-personas" className="font-bold text-gray-700">
+                      Comensales:
+                    </label>
+                    <input
+                      id="num-personas"
+                      type="number"
+                      value={numPersonas}
+                      onChange={handlePersonasChange}
+                      className={`border-2 rounded-lg p-2 w-20 text-center text-lg font-bold outline-none focus:ring-2 transition-colors
+                        ${errorMsg ? "border-red-500 focus:ring-red-200 bg-red-50" : "border-gray-300 focus:ring-blue-400 focus:border-blue-500"}
+                      `}
+                      placeholder="#"
+                      min="1"
+                    />
+                  </div>
+                </div>
+
+                {/* MENSAJE DE ERROR ESPECÍFICO DE VALIDACIÓN */}
+                {errorMsg && (
+                    <p className="mt-2 text-red-600 font-bold text-sm text-center sm:text-right animate-pulse">
+                        ⚠️ {errorMsg}
+                    </p>
+                )}
+
+                <button
+                  onClick={handleApartar}
+                  // Deshabilitamos si no hay personas o si hay un error de validación
+                  disabled={!numPersonas || !!errorMsg}
+                  className={`w-full mt-4 py-3 px-6 text-white font-extrabold text-lg rounded-xl shadow-lg transition-all transform
+                    ${(!numPersonas || !!errorMsg) 
+                        ? "bg-gray-400 cursor-not-allowed grayscale" 
+                        : "bg-blue-600 hover:bg-blue-700 hover:scale-[1.02] active:scale-95 shadow-blue-500/30"}
+                  `}
+                >
+                  Confirmar Mesa ➡️
+                </button>
               </div>
-                         {" "}
-            </div>
-            {/* Contenedor de botones de acción */}
-            <div className="flex gap-4">
-              {/* Botón 1: Apartar e Ir al Menú */}
-              <button
-                onClick={handleApartar}
-                className="w-full py-3 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-lg transform active:scale-95"
-                disabled={!numPersonas}
-              >
-                Apartar e Ir al Menú ➡️
-              </button>
 
-              {/* 🔥 Botón 2: CANCELAR (Llama a la acción pasada por TablesView) */}
-              <button
-                onClick={onCancelAction}
-                className="py-3 px-4 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition shadow-lg transform active:scale-95 flex-shrink-0"
-                aria-label="Cancelar selección de mesa"
-              >
-                🗑️ Cancelar
-              </button>
-            </div>
-                     {" "}
-          </div>
-        )}
-                {/* VER MESA OCUPADA (Mesa Seleccionada Y Ocupada) */}       {" "}
-        {currentSelectedTable && currentSelectedTable.status === "ocupada" && (
-          <div className="mt-6 flex flex-col gap-4 animate-fade-in-up">
-                       {" "}
-            <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-center mb-4">
-                           {" "}
-              <p className="text-red-800 font-bold">
-                                Mesa {currentSelectedTable.number} Ocupada      
-                       {" "}
-              </p>
-                           {" "}
-              <p className="text-xs text-red-600">Pedido en curso...</p>       
-                 {" "}
-            </div>
-            {/* Contenedor de botones de acción para mesa ocupada */}
-            <div className="flex gap-4">
-              {/* Botón 1: Ver Pedido / Agregar Items */}
-              <button
-                onClick={handleContinuarPedido}
-                className="disabled:cursor-not-allowed w-full py-3 px-4 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition shadow-lg"
-              >
-                Ver Pedido / Agregar Items 📝
-              </button>
+            ) : (
+              /* CASO 2: MESA OCUPADA */
+              <div className="bg-red-50 p-6 rounded-xl border border-red-200 shadow-inner text-center">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold text-red-800 flex items-center justify-center gap-2">
+                    🚫 Mesa {currentSelectedTable.number} Ocupada
+                  </h3>
+                  <p className="text-red-600 text-sm mt-1">Hay una orden activa en esta mesa.</p>
+                </div>
 
-              {/* 🔥 Botón 2: CANCELAR */}
-              <button
-                onClick={onCancelAction}
-                className="py-3 px-4 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 transition shadow-lg flex-shrink-0"
-                aria-label="Cancelar selección de mesa"
-              >
-                🗑️ Cancelar
-              </button>
-            </div>
-                     {" "}
+                <button
+                  onClick={handleContinuarPedido}
+                  className="w-full sm:w-auto px-8 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition shadow-lg shadow-red-500/30 active:scale-95"
+                >
+                  Ver / Editar Pedido 📝
+                </button>
+              </div>
+            )}
           </div>
         )}
              {" "}
