@@ -228,7 +228,7 @@ const GestionMesas = () => {
           <button
             onClick={() => openModal(null)}
             disabled={loading}
-            className="w-full sm:w-auto bg-red-700 hover:bg-red-800 text-white font-bold py-3 px-6 rounded-lg shadow-md disabled:opacity-50 transition-transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+            className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md disabled:opacity-50 transition-transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
             aria-label="Crear una nueva mesa"
           >
                         + Nueva Mesa          {" "}

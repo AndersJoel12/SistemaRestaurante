@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
@@ -8,82 +8,88 @@ import Header from "../components/Header.jsx";
 const API_PRODUCTOS = "http://localhost:8000/api/productos";
 const API_CATEGORIAS = "http://localhost:8000/api/categorias";
 
+const normalizePlato = (plato) => {
+  if (!plato) return null;
+
+  const rawStock = parseInt(plato.stock || 0, 10);
+  const isAvailable = plato.disponible ?? plato.available ?? rawStock > 0;
+
+  return {
+    id: plato.id,
+    name: plato.nombre || plato.name || "",
+    descripcion: plato.descripcion || plato.description || "",
+    price: parseFloat(plato.precio || plato.price || 0),
+    stock: rawStock,
+    available: isAvailable,
+    category_id:
+      (plato.categoria && plato.categoria.id) ||
+      plato.categoria ||
+      plato.category,
+    imagen_url: plato.imagen,
+  };
+};
+
 const GestionMenu = () => {
   const [message, setMessage] = useState(null);
   const [platos, setPlatos] = useState([]);
   const [categorias, setCategorias] = useState([]);
-  const [editingItem, setEditingItem] = useState(null);
-  const [imagenArchivo, setImagenArchivo] = useState(null);
+  const [editingItem, setEditingItem] = useState(null); // Producto en edición/creación
+  const [imagenArchivo, setImagenArchivo] = useState(null); // Archivo de imagen seleccionado
+  const [loading, setLoading] = useState(false); // Indicador de carga
+
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
 
+  const cargarDatos = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [resProductos, resCategorias] = await Promise.all([
+        axios.get(`${API_PRODUCTOS}/`),
+        axios.get(`${API_CATEGORIAS}/`),
+      ]);
+
+      setPlatos(
+        Array.isArray(resProductos.data)
+          ? resProductos.data.map(normalizePlato)
+          : []
+      );
+      setCategorias(
+        Array.isArray(resCategorias.data) ? resCategorias.data : []
+      );
+    } catch (error) {
+      console.error("🔴 [FETCH] Error load:", error);
+      setMessage({
+        type: "error",
+        text: "No se pudo conectar con el servidor para cargar datos.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const [resProductos, resCategorias] = await Promise.all([
-          axios.get(`${API_PRODUCTOS}/`),
-          axios.get(`${API_CATEGORIAS}/`),
-        ]);
-        setPlatos(Array.isArray(resProductos.data) ? resProductos.data : []);
-        setCategorias(
-          Array.isArray(resCategorias.data) ? resCategorias.data : []
-        );
-      } catch (error) {
-        console.error("Error load:", error);
-        setMessage({
-          type: "error",
-          text: "No se pudo conectar con el servidor.",
-        });
-      }
-    };
     cargarDatos();
-  }, []); // --- HELPERS ---
-
-  const getCategoryId = (item) => {
-    if (!item) return null;
-    if (item.categoria_id !== undefined && item.categoria_id !== null)
-      return parseInt(item.categoria_id, 10);
-    if (item.categoria && typeof item.categoria === "object")
-      return item.categoria.id;
-    if (item.category)
-      return typeof item.category === "object"
-        ? item.category.id
-        : parseInt(item.category, 10);
-    return null;
-  };
-
-  const getCategoryName = (item) => {
-    const catId = getCategoryId(item);
-    if (!catId && item.categoria && typeof item.categoria === "string")
-      return item.categoria;
-    if (!catId) return "---";
-    const found = categorias.find((c) => String(c.id) === String(catId));
-    return found ? found.nombre : "---";
-  };
+  }, [cargarDatos]);
 
   const platosFiltrados = useMemo(() => {
     return platos.filter((dish) => {
       const texto = busqueda.toLowerCase();
-      const nombre = (dish.nombre || dish.name || "").toLowerCase();
+      const nombre = (dish.nombre || "").toLowerCase();
       const matchTexto =
         nombre.includes(texto) ||
         (dish.descripcion || "").toLowerCase().includes(texto);
-      const catId = getCategoryId(dish);
+
+      const catId = dish.category_id;
+
       const matchCategoria =
         filtroCategoria === "" || String(catId) === String(filtroCategoria);
+
       return matchTexto && matchCategoria;
     });
-  }, [platos, busqueda, filtroCategoria, categorias]); // --- HANDLERS ---
+  }, [platos, busqueda, filtroCategoria]);
 
-  const handleFormChange = (arg1, arg2) => {
-    let name, value;
-    if (arg1 && arg1.target) {
-      name = arg1.target.name;
-      value = arg1.target.value;
-    } else {
-      name = arg1;
-      value = arg2;
-    }
+  const handleFormChange = (e) => {
+    const { name, value } = e.target || { name: e, value: arguments[1] };
 
     setEditingItem((prev) => ({ ...prev, [name]: value }));
   };
@@ -96,20 +102,20 @@ const GestionMenu = () => {
   const openModal = (item = null) => {
     setMessage(null);
     setImagenArchivo(null);
+
     const defaultCatId = categorias.length > 0 ? categorias[0].id : "";
+    const normalized = normalizePlato(item);
 
     if (item) {
-      const catId = getCategoryId(item);
-      const isAvail = item.available ?? item.disponible ?? true;
-
       setEditingItem({
-        id: item.id,
-        name: item.nombre || item.name || "",
-        descripcion: item.descripcion || "",
-        price: item.precio || item.price || 0,
-        category: String(catId || defaultCatId),
-        available: isAvail ? "true" : "false",
-        imagen: item.imagen,
+        id: normalized.id,
+        name: normalized.name,
+        descripcion: normalized.descripcion,
+        price: normalized.price,
+        stock: normalized.stock,
+        category: String(normalized.category_id || defaultCatId),
+        available: normalized.available ? "true" : "false",
+        imagen: normalized.imagen_url,
       });
     } else {
       setEditingItem({
@@ -117,6 +123,7 @@ const GestionMenu = () => {
         name: "",
         descripcion: "",
         price: 0,
+        stock: 0,
         imagen: null,
         category: String(defaultCatId),
         available: "true",
@@ -125,8 +132,22 @@ const GestionMenu = () => {
   };
 
   const handleSave = async () => {
+    setLoading(true);
+    setMessage(null);
+
     if (!editingItem.name.trim()) {
       setMessage({ type: "error", text: "El nombre es obligatorio." });
+      setLoading(false);
+      return;
+    }
+
+    const rawStock = parseInt(editingItem.stock || "0", 10);
+    if (isNaN(rawStock) || rawStock < 0) {
+      setMessage({
+        type: "error",
+        text: "El Stock debe ser un número positivo.",
+      });
+      setLoading(false);
       return;
     }
 
@@ -134,16 +155,30 @@ const GestionMenu = () => {
     formData.append("nombre", editingItem.name);
     formData.append("descripcion", editingItem.descripcion);
     formData.append("precio", editingItem.price);
+    formData.append("stock", rawStock);
+  
 
-    const catInt = parseInt(editingItem.category, 10); // --- ESTRATEGIA "ESCOPETA" --- // Enviamos AMBOS campos para compatibilidad con diferentes backends (Django, Flask, etc.)
+    let isAvailableForAPI;
+    if (rawStock <= 0) {
+      isAvailableForAPI = "False";
 
-    formData.append("categoria", catInt);
-    formData.append("categoria_id", catInt);
+      if (editingItem.available === "true") {
+        setMessage({
+          type: "warning",
+          text: "Stock es 0, plato marcado automáticamente como NO disponible.",
+        });
+      }
+    } else {
+      isAvailableForAPI = editingItem.available === "true" ? "True" : "False";
+    }
+    formData.append("disponible", isAvailableForAPI);
 
-    const valPython = editingItem.available === "true" ? "True" : "False";
-    formData.append("disponible", valPython);
+    const catInt = parseInt(editingItem.category, 10);
+    formData.append("categoria_escritura", catInt);
 
-    if (imagenArchivo) formData.append("imagen", imagenArchivo);
+    if (imagenArchivo) {
+      formData.append("imagen", imagenArchivo);
+    }
 
     try {
       const headers = { "Content-Type": "multipart/form-data" };
@@ -159,30 +194,54 @@ const GestionMenu = () => {
         response = await axios.post(`${API_PRODUCTOS}/`, formData, { headers });
       }
 
+      const savedPlato = normalizePlato(response.data);
       setPlatos((prev) => {
         if (editingItem.id)
-          return prev.map((p) =>
-            p.id === response.data.id ? response.data : p
-          );
-        return [...prev, response.data];
+          return prev.map((p) => (p.id === savedPlato.id ? savedPlato : p));
+        return [...prev, savedPlato];
       });
-      setMessage({ type: "success", text: "Guardado correctamente." });
+
+      setMessage({ type: "success", text: "Plato guardado correctamente." });
       setEditingItem(null);
     } catch (error) {
-      console.error("🔴 [ERROR] Fallo al guardar:", error);
-      setMessage({ type: "error", text: "Error al guardar." });
+      console.error(
+        "🔴 [SAVE] Fallo al guardar:",
+        error.response?.data || error
+      );
+      const errorText = error.response?.data?.detail
+        ? `Error: ${error.response.data.detail}`
+        : "Error al guardar. Revise los campos.";
+      setMessage({ type: "error", text: errorText });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar?")) return;
+    if (!window.confirm("¿Eliminar este plato permanentemente?")) return;
+    setLoading(true);
     try {
       await axios.delete(`${API_PRODUCTOS}/${id}/`);
       setPlatos((prev) => prev.filter((p) => p.id !== id));
-      setMessage({ type: "warning", text: "Eliminado." });
+      setMessage({ type: "warning", text: "Plato eliminado." });
     } catch (e) {
-      setMessage({ type: "error", text: "Error al eliminar." });
+      console.error("🔴 [DELETE] Error:", e);
+      setMessage({
+        type: "error",
+        text: "Error al eliminar. Puede que esté referenciado en alguna orden.",
+      });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const getCategoryName = (dish) => {
+    // Busca en la lista de categorías (estado)
+    const category = categorias.find(
+        (c) => String(c.id) === String(dish.category_id)
+    );
+    // Devuelve el nombre de la categoría o un texto por defecto
+    return category ? category.nombre : "Sin Categoría";
   };
 
   return (
@@ -233,7 +292,7 @@ const GestionMenu = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
           {platosFiltrados.map((dish) => {
             const catName = getCategoryName(dish);
-            const isAvailable = dish.available ?? dish.disponible ?? true;
+            
             return (
               <div
                 key={dish.id}
@@ -252,8 +311,6 @@ const GestionMenu = () => {
                       {dish.nombre || dish.name}
                     </h3>
 
-                    {/* CAMBIO AQUÍ: line-clamp-2 cambiado a line-clamp-3 */}
-
                     <p className="text-xs text-gray-500 mt-1 line-clamp-3">
                       {dish.descripcion}
                     </p>
@@ -270,16 +327,39 @@ const GestionMenu = () => {
                   </span>
                 </div>
 
+                {/* NUEVA LÍNEA: Mostrar Stock */}
+                <div className="text-sm text-gray-600">
+                  Stock: <span className="font-bold">{dish.stock}</span>
+                </div>
+
                 <div className="flex justify-between items-center mt-1 gap-2">
-                  <span
-                    className={`py-1 px-2 rounded text-[10px] font-bold uppercase ${
-                      isAvailable
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {isAvailable ? "Disponible" : "Agotado"}
-                  </span>
+                  {/* LÓGICA DE ESTADO MEJORADA */}
+                  {(() => {
+                    const isAvailable = dish.available ?? true;
+                    const stock = dish.stock || 0;
+                    
+                    let statusText = "Desconocido";
+                    let statusClass = "bg-gray-100 text-gray-700";
+
+                    if (stock <= 0) {
+                      statusText = "AGOTADO";
+                      statusClass = "bg-red-100 text-red-700";
+                    } else if (isAvailable) {
+                      statusText = "DISPONIBLE";
+                      statusClass = "bg-green-100 text-green-700";
+                    } else {
+                      statusText = "PAUSADO (Stock)";
+                      statusClass = "bg-yellow-100 text-yellow-700";
+                    }
+
+                    return (
+                      <span
+                        className={`py-1 px-2 rounded text-[10px] font-bold uppercase ${statusClass}`}
+                      >
+                        {statusText}
+                      </span>
+                    );
+                  })()}
 
                   <div
                     className="flex gap-2"
@@ -342,6 +422,14 @@ const GestionMenu = () => {
                 >
                   Precio
                 </th>
+                
+                {/* NUEVO ENCABEZADO: Stock */}
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Stock
+                </th>
 
                 <th
                   scope="col"
@@ -363,7 +451,7 @@ const GestionMenu = () => {
             >
               {platosFiltrados.map((dish) => {
                 const catName = getCategoryName(dish);
-                const isAvailable = dish.available ?? dish.disponible ?? true;
+                
                 return (
                   <tr
                     key={dish.id}
@@ -399,18 +487,45 @@ const GestionMenu = () => {
                     >
                       ${parseFloat(dish.precio || dish.price).toFixed(2)}
                     </td>
-
-                    <td className="py-3 px-6 text-center" role="cell">
-                      <span
-                        className={`py-1 px-3 rounded-full text-xs font-bold ${
-                          isAvailable
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {isAvailable ? "DISPONIBLE" : "AGOTADO"}
-                      </span>
+                    
+                    {/* NUEVA CELDA: Stock */}
+                    <td 
+                      className="py-3 px-6 text-center font-bold text-gray-700 text-sm"
+                      role="cell"
+                    >
+                      {dish.stock}
                     </td>
+
+                    {/* CELDA ESTADO (Lógica mejorada) */}
+                    <td className="py-3 px-6 text-center" role="cell">
+                      {(() => {
+                        const isAvailable = dish.available ?? true;
+                        const stock = dish.stock || 0;
+                        
+                        let statusText = "ERROR";
+                        let statusClass = "bg-gray-100 text-gray-700";
+
+                        if (stock <= 0) {
+                          statusText = "❌ AGOTADO";
+                          statusClass = "bg-red-100 text-red-700";
+                        } else if (isAvailable) {
+                          statusText = "✅ DISPONIBLE";
+                          statusClass = "bg-green-100 text-green-700";
+                        } else {
+                          statusText = "⏸️ PAUSADO";
+                          statusClass = "bg-yellow-100 text-yellow-700";
+                        }
+
+                        return (
+                          <span
+                            className={`py-1 px-3 rounded-full text-xs font-bold ${statusClass}`}
+                          >
+                            {statusText}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    
                     <td
                       className="py-3 px-6 text-center space-x-4 opacity-80 group-hover:opacity-100"
                       role="cell"
@@ -492,6 +607,7 @@ const GestionMenu = () => {
                 ></textarea>
               </div>
 
+              {/* GRUPO 1: Categoría y Stock */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label
@@ -519,14 +635,52 @@ const GestionMenu = () => {
                     ))}
                   </select>
                 </div>
+                
+                {/* NUEVO CAMPO: Stock */}
+                <InputField
+                  label="Stock (Unidades disponibles)"
+                  name="stock"
+                  type="number"
+                  value={editingItem.stock}
+                  onChange={handleFormChange}
+                  min="0"
+                  aria-required="true"
+                />
+              </div>
 
+              {/* GRUPO 2: Precio y Disponibilidad Manual */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <InputField
                   label="Precio"
                   name="price"
                   type="number"
                   value={editingItem.price}
                   onChange={handleFormChange}
+                  step="0.01"
+                  aria-required="true"
                 />
+
+                {/* CAMPO DISPONIBILIDAD MANUAL */}
+                <div>
+                  <label
+                    htmlFor="disponibilidad"
+                    className="block text-sm font-bold text-gray-700 mb-1"
+                  >
+                    Disponibilidad Manual
+                  </label>
+
+                  <select
+                    id="disponibilidad"
+                    name="available"
+                    value={editingItem.available}
+                    onChange={handleFormChange}
+                    className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                    aria-label="Estado de disponibilidad manual del plato"
+                  >
+                    <option value="true">✅ Activo (Mostrar en menú)</option>
+                    <option value="false">⏸️ Pausado (Ocultar)</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -555,27 +709,6 @@ const GestionMenu = () => {
                     aria-label="Seleccionar archivo de imagen"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="disponibilidad"
-                  className="block text-sm font-bold text-gray-700 mb-1"
-                >
-                  Disponibilidad
-                </label>
-
-                <select
-                  id="disponibilidad"
-                  name="available"
-                  value={editingItem.available}
-                  onChange={handleFormChange}
-                  className="w-full border border-gray-300 bg-white p-2.5 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
-                  aria-label="Estado de disponibilidad del plato"
-                >
-                  <option value="true">✅ Disponible</option>
-                  <option value="false">⛔ Agotado</option>
-                </select>
               </div>
             </div>
 

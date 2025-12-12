@@ -365,7 +365,7 @@ const GestionUsuarios = () => {
                     {/* Línea Principal: Nombre y Estado */}
                     <div className="flex justify-between items-start pb-2 border-b border-gray-100">
                       <h3 className="font-extrabold text-xl text-gray-800 leading-tight pr-4">
-                        {user.name || user.first_name || user.nombre}{" "}
+                        {user.name || user.first_name || user.nombre}
                         {user.last_name || user.apellido}
                       </h3>
                       <span

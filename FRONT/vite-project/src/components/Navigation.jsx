@@ -21,24 +21,24 @@ function NavBar() {
         */}
         <div className="flex items-center gap-6 md:gap-12 text-sm md:text-base text-yellow-400 font-bold tracking-wide">
           
-          <Link to="/manage-users" className="group flex flex-col items-center transition duration-300">
+          <Link to="/manage-users" className="group flex flex-col items-center transition duration-300" accessKey="q">
             {/* Efecto hover: cambia a blanco y escala un poco */}
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Usuarios</span>
           </Link>
 
-          <Link to="/manage-category" className="group flex flex-col items-center transition duration-300">
+          <Link to="/manage-category" className="group flex flex-col items-center transition duration-300" accessKey="w">
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Categorías</span>
           </Link>
 
-          <Link to="/manage-menu" className="group flex flex-col items-center transition duration-300">
+          <Link to="/manage-menu" className="group flex flex-col items-center transition duration-300" accessKey="a">
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Productos</span>
           </Link>
 
-          <Link to="/manage-table" className="group flex flex-col items-center transition duration-300">
+          <Link to="/manage-table" className="group flex flex-col items-center transition duration-300" accessKey="s">
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Mesas</span>
           </Link>
 
-          <Link to="/manage-billing" className="group flex flex-col items-center transition duration-300">
+          <Link to="/manage-billing" className="group flex flex-col items-center transition duration-300" accessKey="z">
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Facturación</span>
           </Link>
 
