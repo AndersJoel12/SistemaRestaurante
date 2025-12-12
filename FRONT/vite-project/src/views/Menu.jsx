@@ -235,7 +235,7 @@ const Menu = () => {
           {/* Botón Órdenes */}
           <Link
             to="/orders"
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 shadow-sm rounded-lg flex items-center gap-1"
+            className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-3 shadow-sm rounded-lg flex items-center gap-1"
             aria-label="Ver pedidos activos"
           >
             🛒 Órdenes
