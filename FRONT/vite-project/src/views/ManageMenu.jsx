@@ -21,10 +21,7 @@ const normalizePlato = (plato) => {
     price: parseFloat(plato.precio || plato.price || 0),
     stock: rawStock,
     available: isAvailable,
-    category_id:
-      (plato.categoria && plato.categoria.id) ||
-      plato.categoria ||
-      plato.category,
+    category_id: plato.categoria_id,
     imagen_url: plato.imagen,
   };
 };
@@ -303,7 +300,7 @@ const GestionMenu = () => {
               >
                 <div className="flex gap-4">
                   <img
-                    src={dish.imagen || "https://placehold.co/80"}
+                    src={dish.imagen_url || "https://placehold.co/80"}
                     alt={`Imagen de ${dish.nombre || dish.name || "plato"}`}
                     className="w-20 h-20 rounded-lg object-cover bg-gray-100"
                   />
@@ -462,7 +459,7 @@ const GestionMenu = () => {
                   >
                     <td className="py-3 px-6 text-center" role="cell">
                       <img
-                        src={dish.imagen || "https://placehold.co/40"}
+                        src={dish.imagen_url || "https://placehold.co/40"}
                         alt={`Imagen de ${dish.nombre || dish.name || "plato"}`}
                         className="w-12 h-12 rounded-lg object-cover mx-auto shadow-sm border"
                       />
@@ -696,7 +693,7 @@ const GestionMenu = () => {
                 <div className="flex items-center gap-4 p-3 border rounded-lg bg-gray-50">
                   {editingItem.imagen && !imagenArchivo && (
                     <img
-                      src={editingItem.imagen}
+                      src={editingItem.imagen_url}
                       alt="Imagen actual del plato"
                       className="w-16 h-16 rounded object-cover border"
                     />
