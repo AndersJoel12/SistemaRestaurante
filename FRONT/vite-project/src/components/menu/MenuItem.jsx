@@ -12,10 +12,19 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
     return itemInOrder ? itemInOrder.quantity : 0;
   }, [activeOrder, dish.id]);
 
+  const isStockLimitReached = dish.disponible && quantity >= dish.stock;
+
   // 2. MANEJADORES DE EVENTOS
   // Simplificamos la lógica delegando en updateOrder
   const handleIncrease = () => {
-    if (!dish.disponible) return;
+    if (!dish.disponible || isStockLimitReached) return;
+
+    if (quantity >= dish.stock) {
+      // Opcional: Puedes agregar una notificación de que el stock es limitado.
+      console.warn(`Stock limitado. No se puede añadir más de ${dish.stock} unidades.`);
+      return; // Detiene la ejecución si se alcanza el stock máximo
+    }
+
     updateOrder(dish, quantity === 0 ? "add" : "update", quantity + 1);
   };
 
@@ -90,6 +99,7 @@ const MenuItem = ({ dish, activeOrder, updateOrder }) => {
                 value={quantity}
                 onIncrease={handleIncrease}
                 onDecrease={handleDecrease}
+                disabled={isStockLimitReached}
              />
            </div>
         ) : (

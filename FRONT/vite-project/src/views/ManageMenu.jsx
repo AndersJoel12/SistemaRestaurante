@@ -15,6 +15,7 @@ const normalizePlato = (plato) => {
   const rawStock = parseInt(plato.stock || 0, 10);
   const isAvailable = plato.disponible ?? plato.available ?? rawStock > 0;
 
+
   return {
     id: plato.id,
     name: plato.nombre || plato.name || "",
@@ -181,6 +182,7 @@ const GestionMenu = () => {
       isAvailableForAPI = editingItem.available === "true" ? "True" : "False";
     }
     formData.append("disponible", isAvailableForAPI);
+
 
     const catInt = parseInt(editingItem.category, 10);
     formData.append("categoria_id", catInt);

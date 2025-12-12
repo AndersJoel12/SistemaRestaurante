@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
 
-// CONFIGURACIÓN DE ENTORNO
+// --- CONFIGURACIÓN DE ENTORNO ---
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 const API_URL = `${API_BASE}/facturas`;
 const API_PEDIDOS = `${API_BASE}/pedidos`;
@@ -17,6 +17,76 @@ const METODOS_PAGO = [
   { id: "ZELLE", label: "Zelle", icon: "🔄" },
 ];
 
+// --- SUB-COMPONENTE: VISTA DE ÉXITO (Para manejar la animación limpia) ---
+const SuccessView = () => {
+  const [width, setWidth] = useState("w-0");
+
+  useEffect(() => {
+    // Pequeño retardo para activar la transición CSS
+    const timer = setTimeout(() => {
+      setWidth("w-full");
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 transition-opacity duration-300"
+      role="alert"
+      aria-live="assertive"
+    >
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm text-center overflow-hidden animate-bounce-in border-t-8 border-green-500">
+        
+        {/* Encabezado Visual */}
+        <div className="bg-green-50 pt-8 pb-6">
+          <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-green-100 shadow-inner mb-2">
+            {/* Icono Check SVG */}
+            <svg
+              className="h-12 w-12 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="3"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-black text-gray-800 tracking-tight">
+            ¡Pago Exitoso!
+          </h2>
+        </div>
+
+        {/* Cuerpo del Mensaje */}
+        <div className="p-8">
+          <p className="text-gray-500 text-lg font-medium mb-6 leading-relaxed">
+            La factura se ha registrado correctamente y la mesa ha sido liberada.
+          </p>
+
+          {/* Barra de progreso visual (Standard Tailwind Transition) */}
+          <div 
+            className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden"
+            role="progressbar"
+            aria-label="Redirigiendo..."
+          >
+            <div 
+                className={`bg-green-500 h-2 rounded-full transition-all duration-[2500ms] ease-linear ${width}`} 
+            />
+          </div>
+          <p className="text-xs text-gray-400 uppercase tracking-widest font-bold">
+            Redirigiendo...
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENTE PRINCIPAL ---
 const GenerarFactura = () => {
   const navigate = useNavigate();
 
@@ -50,7 +120,9 @@ const GenerarFactura = () => {
     try {
       const response = await axios.get(`${API_PEDIDOS}/?estado=POR_FACTURAR`);
       if (Array.isArray(response.data)) {
-        const pedidosPorCobrar = response.data.filter(p => p.estado_pedido === "POR_FACTURAR");
+        const pedidosPorCobrar = response.data.filter(
+          (p) => p.estado_pedido === "POR_FACTURAR"
+        );
         setListaPedidos(pedidosPorCobrar);
       }
     } catch (error) {
@@ -68,13 +140,15 @@ const GenerarFactura = () => {
   // --- CÁLCULOS ---
   const totalPagar = useMemo(() => {
     if (!formPago.pedidoId) return "0.00";
-    const pedido = listaPedidos.find(p => String(p.id) === String(formPago.pedidoId));
-    
+    const pedido = listaPedidos.find(
+      (p) => String(p.id) === String(formPago.pedidoId)
+    );
+
     const base = pedido?.CostoTotal ? parseFloat(pedido.CostoTotal) : 0;
     const tax = parseFloat(formPago.impuesto) || 0;
     const disc = parseFloat(formPago.descuento) || 0;
 
-    const total = Math.max(0, base + tax - disc); 
+    const total = Math.max(0, base + tax - disc);
     return total.toFixed(2);
   }, [formPago.pedidoId, formPago.impuesto, formPago.descuento, listaPedidos]);
 
@@ -94,8 +168,12 @@ const GenerarFactura = () => {
     setMessage(null);
     const newErrors = {};
 
+    // Validaciones
     if (!formPago.pedidoId) newErrors.pedidoId = "Seleccione un pedido.";
-    if (formPago.metodoPago !== "EFECTIVO" && (!formPago.referencia || formPago.referencia.length < 6)) {
+    if (
+      formPago.metodoPago !== "EFECTIVO" &&
+      (!formPago.referencia || formPago.referencia.length < 6)
+    ) {
       newErrors.referencia = "Referencia incompleta (min 6).";
     }
     if (requiereFactura) {
@@ -106,7 +184,10 @@ const GenerarFactura = () => {
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setLoading(false);
-      setMessage({ type: "error", text: "Por favor corrija los errores marcados." });
+      setMessage({
+        type: "error",
+        text: "Por favor corrija los errores marcados.",
+      });
       return;
     }
 
@@ -116,7 +197,9 @@ const GenerarFactura = () => {
       impuesto: parseFloat(formPago.impuesto) || 0,
       descuento: parseFloat(formPago.descuento) || 0,
       referencia_pago: formPago.referencia,
-      cliente_nombre: requiereFactura ? datosCliente.nombre : "Consumidor Final",
+      cliente_nombre: requiereFactura
+        ? datosCliente.nombre
+        : "Consumidor Final",
       cliente_cedula: requiereFactura ? datosCliente.cedula : "0",
       cliente_direccion: requiereFactura ? datosCliente.direccion : "N/A",
       cliente_telefono: requiereFactura ? datosCliente.telefono : "N/A",
@@ -124,57 +207,75 @@ const GenerarFactura = () => {
 
     try {
       await axios.post(`${API_URL}/`, payload);
-      const pedido = listaPedidos.find(p => String(p.id) === String(formPago.pedidoId));
+      
+      // Liberar mesa si aplica
+      const pedido = listaPedidos.find(
+        (p) => String(p.id) === String(formPago.pedidoId)
+      );
       if (pedido?.mesa_id) {
         await axios.patch(`${API_MESAS}/${pedido.mesa_id}/`, { estado: true });
       }
 
       setSuccess(true);
       setMessage({ type: "success", text: "¡Cobro registrado exitosamente!" });
-      
+
+      // Timeout para limpieza y redirección (Sincronizado con la animación visual de 2500ms)
       setTimeout(() => {
         setSuccess(false);
-        setFormPago(prev => ({ ...prev, pedidoId: "", impuesto: 0, descuento: 0, referencia: "" }));
+        setFormPago((prev) => ({
+          ...prev,
+          pedidoId: "",
+          impuesto: 0,
+          descuento: 0,
+          referencia: "",
+        }));
         setRequiereFactura(false);
-        setDatosCliente({ cedula: "", nombre: "", direccion: "", telefono: "" });
+        setDatosCliente({
+          cedula: "",
+          nombre: "",
+          direccion: "",
+          telefono: "",
+        });
         setErrors({});
         setMessage(null);
         obtenerPedidos();
-      }, 2500);
-
+        // Opcional: navegar a otra ruta si prefieres
+        // navigate('/orders'); 
+      }, 2600); // Un poco más de 2500ms para asegurar que la barra termine
     } catch (error) {
       console.error("Error facturando:", error);
-      setMessage({ type: "error", text: "Error al procesar la factura." });
+      const msg = error.response?.data?.detail || "Error al procesar la factura.";
+      setMessage({ type: "error", text: msg });
     } finally {
       setLoading(false);
     }
   };
 
+  // --- RENDERIZADO CONDICIONAL: ÉXITO ---
   if (success) {
-    return (
-      <div role="alert" aria-live="assertive" className="flex flex-col items-center justify-center min-h-[60vh] animate-bounce-in">
-        <div className="bg-green-100 p-8 rounded-full mb-6 text-6xl shadow-inner" aria-hidden="true">✅</div>
-        <h2 className="text-3xl font-black text-gray-800">¡Pago Aprobado!</h2>
-        <p className="text-gray-500 mt-2">La factura se ha guardado y la mesa liberada.</p>
-      </div>
-    );
+    return <SuccessView />;
   }
 
+  // --- RENDERIZADO PRINCIPAL ---
   return (
-    // MAIN: Indica que este es el contenido principal de la página
     <main className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans flex flex-col items-center">
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* COLUMNA IZQUIERDA */}
-        <section className="lg:col-span-2 space-y-6" aria-labelledby="billing-title">
+        <section
+          className="lg:col-span-2 space-y-6"
+          aria-labelledby="billing-title"
+        >
           <div className="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-red-600">
-            
             <header className="flex justify-between items-center mb-6">
-              <h2 id="billing-title" className="text-2xl font-black text-gray-800 flex items-center gap-2">
+              <h2
+                id="billing-title"
+                className="text-2xl font-black text-gray-800 flex items-center gap-2"
+              >
                 💰 Caja y Facturación
               </h2>
-              <button 
-                onClick={() => navigate("/orders")} 
+              <button
+                onClick={() => navigate("/orders")}
                 className="text-sm font-bold text-gray-500 hover:text-red-600 transition"
                 aria-label="Volver a la gestión de pedidos"
               >
@@ -184,44 +285,48 @@ const GenerarFactura = () => {
 
             {/* SELECCIÓN DE PEDIDO */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
-               <InputField 
-                 type="select"
-                 label="Pedido a Cobrar"
-                 name="pedidoId"
-                 id="pedidoId" // ID explícito
-                 value={formPago.pedidoId}
-                 onChange={handleFormChange}
-                 error={errors.pedidoId}
-                 options={listaPedidos.map(p => ({
-                   value: p.id,
-                   label: `Pedido #${p.id} - Mesa ${p.mesa_id || 'Barra'} ($${p.CostoTotal})`
-                 }))}
-                 placeholder={loadingPedidos ? "Cargando..." : "-- Seleccione Pedido --"}
-                 disabled={loadingPedidos}
-                 className="text-lg font-bold"
-                 required // Semántica HTML5
-               />
+              <InputField
+                type="select"
+                label="Pedido a Cobrar"
+                name="pedidoId"
+                id="pedidoId"
+                value={formPago.pedidoId}
+                onChange={handleFormChange}
+                error={errors.pedidoId}
+                options={listaPedidos.map((p) => ({
+                  value: p.id,
+                  label: `Pedido #${p.id} - Mesa ${
+                    p.mesa_id || "Barra"
+                  } ($${p.CostoTotal})`,
+                }))}
+                placeholder={
+                  loadingPedidos ? "Cargando..." : "-- Seleccione Pedido --"
+                }
+                disabled={loadingPedidos}
+                className="text-lg font-bold"
+                required
+              />
             </div>
 
             {/* IMPUESTOS Y DESCUENTOS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField 
-                type="number" 
-                label="Impuesto Adicional ($)" 
-                name="impuesto" 
+              <InputField
+                type="number"
+                label="Impuesto Adicional ($)"
+                name="impuesto"
                 id="impuesto"
-                value={formPago.impuesto} 
+                value={formPago.impuesto}
                 onChange={handleFormChange}
                 placeholder="0.00"
                 min="0"
               />
-              <InputField 
-                type="number" 
-                label="Descuento ($)" 
-                name="descuento" 
+              <InputField
+                type="number"
+                label="Descuento ($)"
+                name="descuento"
                 id="descuento"
-                value={formPago.descuento} 
-                onChange={handleFormChange} 
+                value={formPago.descuento}
+                onChange={handleFormChange}
                 className="text-green-600 font-bold"
                 placeholder="0.00"
                 min="0"
@@ -229,63 +334,75 @@ const GenerarFactura = () => {
             </div>
 
             {/* TOTAL GIGANTE - LIVE REGION */}
-            {/* aria-live="polite": Anuncia el cambio de precio sin interrumpir al usuario */}
-            <div 
+            <div
               className="bg-gray-900 text-white p-6 rounded-2xl text-center shadow-lg my-6 transform transition-transform hover:scale-[1.01]"
-              role="status" 
+              role="status"
               aria-live="polite"
               aria-label="Total neto a pagar calculado"
             >
-              <p className="text-gray-400 text-sm uppercase tracking-widest mb-1" aria-hidden="true">Total Neto a Pagar</p>
+              <p
+                className="text-gray-400 text-sm uppercase tracking-widest mb-1"
+                aria-hidden="true"
+              >
+                Total Neto a Pagar
+              </p>
               <p className="text-5xl font-black tracking-tight">${totalPagar}</p>
             </div>
 
-            {/* MÉTODOS DE PAGO - RADIOGROUP */}
+            {/* MÉTODOS DE PAGO */}
             <div role="radiogroup" aria-labelledby="payment-method-label">
-                <label id="payment-method-label" className="block text-sm font-bold text-gray-700 capitalize mb-2">
-                    Método de Pago
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <label
+                id="payment-method-label"
+                className="block text-sm font-bold text-gray-700 capitalize mb-2"
+              >
+                Método de Pago
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 {METODOS_PAGO.map((metodo) => {
-                    const isSelected = formPago.metodoPago === metodo.id;
-                    return (
+                  const isSelected = formPago.metodoPago === metodo.id;
+                  return (
                     <button
-                        key={metodo.id}
-                        type="button" // Evita submit accidental
-                        role="radio"  // Semántica de opción única
-                        aria-checked={isSelected}
-                        aria-label={`Pagar con ${metodo.label}`}
-                        onClick={() => setFormPago({ ...formPago, metodoPago: metodo.id })}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                      key={metodo.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      aria-label={`Pagar con ${metodo.label}`}
+                      onClick={() =>
+                        setFormPago({ ...formPago, metodoPago: metodo.id })
+                      }
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
                         isSelected
-                            ? "border-red-600 bg-red-50 text-red-700 font-bold shadow-md"
-                            : "border-gray-100 text-gray-500 hover:bg-gray-50"
-                        }`}
+                          ? "border-red-600 bg-red-50 text-red-700 font-bold shadow-md"
+                          : "border-gray-100 text-gray-500 hover:bg-gray-50"
+                      }`}
                     >
-                        <span className="text-2xl mb-1" aria-hidden="true">{metodo.icon}</span>
-                        <span className="text-xs">{metodo.label}</span>
+                      <span className="text-2xl mb-1" aria-hidden="true">
+                        {metodo.icon}
+                      </span>
+                      <span className="text-xs">{metodo.label}</span>
                     </button>
-                    );
+                  );
                 })}
-                </div>
+              </div>
             </div>
 
             {/* REFERENCIA */}
             {formPago.metodoPago !== "EFECTIVO" && (
-              <InputField 
+              <InputField
                 label="Referencia de Pago"
                 name="referencia"
                 id="referencia"
                 value={formPago.referencia}
                 onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, ""); 
+                  const val = e.target.value.replace(/[^0-9]/g, "");
                   setFormPago({ ...formPago, referencia: val });
-                  if(errors.referencia) setErrors({...errors, referencia: null});
+                  if (errors.referencia)
+                    setErrors({ ...errors, referencia: null });
                 }}
                 error={errors.referencia}
                 placeholder="Ej: 994821"
                 maxLength={20}
-                aria-required="true" // Indica que es obligatorio en este contexto
+                aria-required="true"
               />
             )}
 
@@ -295,68 +412,79 @@ const GenerarFactura = () => {
 
         {/* COLUMNA DERECHA */}
         <aside className="lg:col-span-1" aria-labelledby="fiscal-data-title">
-          <div className={`p-6 rounded-2xl shadow-lg border-2 transition-colors duration-300 ${requiereFactura ? 'bg-white border-blue-500' : 'bg-gray-100 border-dashed border-gray-300'}`}>
-            
+          <div
+            className={`p-6 rounded-2xl shadow-lg border-2 transition-colors duration-300 ${
+              requiereFactura
+                ? "bg-white border-blue-500"
+                : "bg-gray-100 border-dashed border-gray-300"
+            }`}
+          >
             <div className="flex justify-between items-center mb-6">
-              <h3 id="fiscal-data-title" className="font-bold text-gray-700 flex gap-2 items-center">
+              <h3
+                id="fiscal-data-title"
+                className="font-bold text-gray-700 flex gap-2 items-center"
+              >
                 📄 Datos Fiscales
               </h3>
-              
+
               {/* SWITCH ACCESIBLE */}
               <label className="flex items-center cursor-pointer relative">
                 <span className="sr-only">Habilitar Factura Fiscal</span>
-                <input 
-                    type="checkbox" 
-                    className="sr-only peer" 
-                    checked={requiereFactura} 
-                    onChange={() => setRequiereFactura(!requiereFactura)} 
-                    role="switch" 
-                    aria-checked={requiereFactura}
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={requiereFactura}
+                  onChange={() => setRequiereFactura(!requiereFactura)}
+                  role="switch"
+                  aria-checked={requiereFactura}
                 />
                 <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
 
             {!requiereFactura ? (
-              <div className="text-center py-12 text-gray-400 opacity-60" aria-hidden="true">
+              <div
+                className="text-center py-12 text-gray-400 opacity-60"
+                aria-hidden="true"
+              >
                 <p className="text-5xl mb-2">👤</p>
                 <p className="font-medium">Consumidor Final</p>
               </div>
             ) : (
               <div className="space-y-2 animate-fade-in">
-                <InputField 
-                  label="Cédula / RIF" 
-                  name="cedula" 
+                <InputField
+                  label="Cédula / RIF"
+                  name="cedula"
                   id="cedula"
-                  value={datosCliente.cedula} 
-                  onChange={handleClienteChange} 
+                  value={datosCliente.cedula}
+                  onChange={handleClienteChange}
                   error={errors.cedula}
                   placeholder="V-12345678"
                   required
                 />
-                <InputField 
-                  label="Nombre / Razón Social" 
-                  name="nombre" 
+                <InputField
+                  label="Nombre / Razón Social"
+                  name="nombre"
                   id="nombre"
-                  value={datosCliente.nombre} 
-                  onChange={handleClienteChange} 
+                  value={datosCliente.nombre}
+                  onChange={handleClienteChange}
                   error={errors.nombre}
                   required
                 />
-                <InputField 
-                  label="Dirección" 
-                  name="direccion" 
+                <InputField
+                  label="Dirección"
+                  name="direccion"
                   id="direccion"
-                  value={datosCliente.direccion} 
-                  onChange={handleClienteChange} 
+                  value={datosCliente.direccion}
+                  onChange={handleClienteChange}
                 />
-                <InputField 
-                  label="Teléfono" 
-                  name="telefono" 
+                <InputField
+                  label="Teléfono"
+                  name="telefono"
                   id="telefono"
                   type="tel"
-                  value={datosCliente.telefono} 
-                  onChange={handleClienteChange} 
+                  value={datosCliente.telefono}
+                  onChange={handleClienteChange}
                 />
               </div>
             )}
@@ -366,15 +494,17 @@ const GenerarFactura = () => {
                 onClick={handleProcesarPago}
                 disabled={loading}
                 className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-black text-lg rounded-xl shadow-lg transition-transform active:scale-95 disabled:bg-gray-400 disabled:cursor-not-allowed flex justify-center gap-2"
-                aria-label={loading ? "Procesando pago, por favor espere" : "Confirmar pago y generar factura"}
+                aria-label={
+                  loading
+                    ? "Procesando pago, por favor espere"
+                    : "Confirmar pago y generar factura"
+                }
               >
                 {loading ? "Procesando..." : "CONFIRMAR PAGO ✅"}
               </button>
             </div>
-
           </div>
         </aside>
-
       </div>
     </main>
   );

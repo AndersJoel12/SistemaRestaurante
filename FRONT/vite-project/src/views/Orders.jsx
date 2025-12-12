@@ -216,7 +216,7 @@ const Orders = () => {
                         isPreparado ? "text-yellow-300" : "text-gray-600"
                       }`}
                     >
-                      {orden.fecha} - {orden.hora}
+                    { orden.empleado_nombre } | {orden.fecha} - {orden.hora}
                     </p>
                   </div>
                   {/* Total: Movido a la parte de abajo en móvil para mejor flujo vertical si es necesario, pero manteniendo el layout original en sm */}
