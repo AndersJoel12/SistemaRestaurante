@@ -1,63 +1,85 @@
-import React from "react";
-// Importamos solo useNavigate y NO el Router, ya que está en App.jsx
+import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import TablesGrid from "../components/TableGrid";
-// Asumimos que tienes un Header, si no lo tienes, puedes omitir la línea o importarlo
 import Header from "../components/Header";
-// Necesitamos NavButton para los botones de navegación
 import NavButton from "../components/Navbutton";
 
-// Esta es la vista que contiene el TablesGrid
 function TablesView() {
   const navigate = useNavigate();
-  /**
-   * Maneja la selección de una mesa activa y la guarda en sesión.
-   * @param {object} mesaActiva - Objeto de la mesa seleccionada { id, number, capacity, ... }.
-   */
+  // Estado para la lógica de selección/deselección de la mesa (Mantenemos el toggle)
+  const [selectedTable, setSelectedTable] = useState(null);
 
-  const handleNavigateToMenu = (mesaActiva) => {
-    // 1. Validamos que el objeto tenga al menos la ID para ser útil
+  /**
+   * Lógica de selección/deselección (Toggle "uwu")
+   */
+  const handleTableSelect = (mesa) => {
+    // Si la mesa clicada es la misma que la seleccionada, deselecciona.
+    if (selectedTable && selectedTable.id === mesa.id) {
+      setSelectedTable(null);
+    } else {
+      setSelectedTable(mesa);
+    }
+  };
+
+  /**
+   * Función de navegación al Menú.
+   */
+  const handleNavigateToMenu = () => {
+    const mesaActiva = selectedTable;
     if (!mesaActiva || !mesaActiva.id) {
-      console.error("Error: Objeto de mesa inválido o incompleto.");
+      alert("Por favor, selecciona una mesa para continuar.");
       return;
-    } // 🔥 CLAVE: Guardar el objeto en la clave "mesa_activa"
+    }
     sessionStorage.setItem("mesa_activa", JSON.stringify(mesaActiva));
-    console.log(
-      `✅ Mesa ${mesaActiva.number} guardada en sesión. Navegando al menú.`
-    ); // 2. NAVEGACIÓN
     navigate("/menu");
   };
 
+  /**
+   * Acción de Cancelar (Redirige a pedidos y deselecciona la mesa).
+   */
+  const handleCancelAction = () => {
+    // Deselecciona la mesa en la vista actual (opcional, pero buena UX)
+    setSelectedTable(null);
+    // Redirige a /orders
+    navigate("/orders");
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="bg-gray-100 min-h-screen">
       <Header />
-      <div className="flex justify-center gap-4 py-3 border-b border-gray-200 bg-white">
-        <NavButton
-          to="/menu"
-          ariaLabel="Ir a Menú"
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center font-bold shadow-md"
-        >
-          📝 Menú
-        </NavButton>
 
-        <NavButton
-          to="/orders"
-          ariaLabel="Ir a Pedidos/Órdenes"
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center font-bold shadow-md"
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        {/* Bloque de Botones de Navegación Superior */}
+        <div
+          className="flex flex-col sm:flex-row justify-center gap-4 mb-8"
+          role="group"
+          aria-label="Opciones de navegación"
         >
-          🧾 Pedidos
-        </NavButton>
-        <NavButton
-          to="/billing"
-          ariaLabel="Ir a Facturación"
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center font-bold shadow-md"
-        >
-          💰 Facturación
-        </NavButton>
-      </div>
+          {/* 🔥 Lógica de Cancelar Superior: SOLO aparece si NO hay mesa seleccionada */}
+          {!selectedTable ? (
+            <button
+              onClick={handleCancelAction}
+              className="px-6 py-2 bg-gray-500 text-white font-bold rounded-lg shadow-md hover:bg-gray-600 transition duration-150 transform hover:-translate-y-0.5 active:scale-95"
+              aria-label="Cancelar la acción y regresar a pedidos"
+            >
+              🗑️ Cancelar
+            </button>
+          ) : (
+            // Si hay mesa seleccionada, mostramos un espacio para mantener la alineación si es necesario,
+            // o simplemente no mostramos nada, permitiendo que el Cancelar Inferior tome protagonismo.
+            <span className="px-6 py-2 bg-transparent text-transparent pointer-events-none"></span>
+          )}
+        </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <TablesGrid onNavigateToMenu={handleNavigateToMenu} />
+        {/* Pasamos los props de selección a TablesGrid */}
+        <TablesGrid
+          onNavigateToMenu={handleNavigateToMenu}
+          onTableSelect={handleTableSelect}
+          selectedTable={selectedTable} // Pasamos el objeto completo
+          selectedTableId={selectedTable ? selectedTable.id : null}
+          // Pasamos la acción de Cancelar para el botón inferior
+          onCancelAction={handleCancelAction}
+        />
       </div>
     </div>
   );
