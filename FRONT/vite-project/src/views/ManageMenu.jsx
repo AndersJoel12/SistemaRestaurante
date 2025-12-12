@@ -238,8 +238,10 @@ const GestionMenu = () => {
   const getCategoryName = (dish) => {
     // Busca en la lista de categorías (estado)
     const category = categorias.find(
-        (c) => String(c.id) === String(dish.category_id)
+      (c) => String(c.id) === String(dish.category_id)
     );
+
+    console.log(category);
     // Devuelve el nombre de la categoría o un texto por defecto
     return category ? category.nombre : "Sin Categoría";
   };
