@@ -6,17 +6,18 @@ import NavButton from "../components/Navbutton";
 
 function TablesView() {
   const navigate = useNavigate();
-  // Estado para la lógica de selección/deselección de la mesa (Mantenemos el toggle)
+  // 🔥 ESTADO CLAVE: Objeto de la mesa actualmente seleccionada
   const [selectedTable, setSelectedTable] = useState(null);
 
   /**
    * Lógica de selección/deselección (Toggle "uwu")
    */
   const handleTableSelect = (mesa) => {
-    // Si la mesa clicada es la misma que la seleccionada, deselecciona.
+    // Si la mesa clicada es la misma que la seleccionada, deselecciona (setSelectedTable(null)).
     if (selectedTable && selectedTable.id === mesa.id) {
       setSelectedTable(null);
     } else {
+      // Si se clica una mesa diferente o ninguna estaba seleccionada, selecciona la nueva mesa.
       setSelectedTable(mesa);
     }
   };
@@ -38,11 +39,13 @@ function TablesView() {
    * Acción de Cancelar (Redirige a pedidos y deselecciona la mesa).
    */
   const handleCancelAction = () => {
-    // Deselecciona la mesa en la vista actual (opcional, pero buena UX)
+    // Deselecciona la mesa en la vista actual
     setSelectedTable(null);
     // Redirige a /orders
     navigate("/orders");
   };
+
+  // El useCallback para getMenuButtonTitle se eliminó ya que no se usa el botón de menú superior
 
   return (
     <div className="bg-gray-100 min-h-screen">
@@ -55,7 +58,12 @@ function TablesView() {
           role="group"
           aria-label="Opciones de navegación"
         >
-          {/* 🔥 Lógica de Cancelar Superior: SOLO aparece si NO hay mesa seleccionada */}
+          {/* Botón 1: Ver Pedidos Activos (Fijo) */}
+          <NavButton to="/orders" ariaLabel="Ir a la lista de pedidos activos">
+            📋 Ver Pedidos Activos
+          </NavButton>
+
+          {/* Lógica de Cancelar Superior: SOLO aparece si NO hay mesa seleccionada */}
           {!selectedTable ? (
             <button
               onClick={handleCancelAction}
@@ -65,19 +73,17 @@ function TablesView() {
               🗑️ Cancelar
             </button>
           ) : (
-            // Si hay mesa seleccionada, mostramos un espacio para mantener la alineación si es necesario,
-            // o simplemente no mostramos nada, permitiendo que el Cancelar Inferior tome protagonismo.
-            <span className="px-6 py-2 bg-transparent text-transparent pointer-events-none"></span>
+            // Espacio vacío para mantener el layout si es necesario
+            <div className="px-6 py-2"></div>
           )}
         </div>
 
-        {/* Pasamos los props de selección a TablesGrid */}
+        {/* Pasamos los props de selección y acción a TablesGrid */}
         <TablesGrid
           onNavigateToMenu={handleNavigateToMenu}
-          onTableSelect={handleTableSelect}
-          selectedTable={selectedTable} // Pasamos el objeto completo
-          selectedTableId={selectedTable ? selectedTable.id : null}
-          // Pasamos la acción de Cancelar para el botón inferior
+          onTableSelect={handleTableSelect} // 🔥 Pasamos la función de TOGGLE (la "chamba")
+          selectedTable={selectedTable} // Objeto completo
+          selectedTableId={selectedTable ? selectedTable.id : null} // ID para comparación en TableCell
           onCancelAction={handleCancelAction}
         />
       </div>
