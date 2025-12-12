@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import TableCell from "./TableCell";
-// import ArrowFluctuation from "./ArrowFluctuation"; // Descomenta si lo usas
+// import ArrowFluctuation from "./ArrowFluctuation"; 
 
 // 1. CONFIGURACIÓN PROFESIONAL
-// Usamos variables de entorno. Si no existe, usa localhost por defecto.
 const API_URL = import.meta.env.VITE_API_URL 
   ? `${import.meta.env.VITE_API_URL}/mesas` 
   : "http://localhost:8000/api/mesas";
@@ -25,23 +24,23 @@ const TablesGrid = ({ onNavigateToMenu }) => {
 
   // Estados
   const [tables, setTables] = useState([]);
+  // NOTA: Aquí definiste 'selectedTableNumber', así que debemos usar este nombre abajo
   const [selectedTableNumber, setSelectedTableNumber] = useState(null);
   
-  // UX: Permitimos string vacío para facilitar el borrado
   const [numPersonas, setNumPersonas] = useState(""); 
   const [loading, setLoading] = useState(true);
-  
-  // UX: Estado para mostrar errores al usuario (no solo en consola)
   const [errorMsg, setErrorMsg] = useState(""); 
 
+  // 🔥 CORRECCIÓN 1: Usamos 'selectedTableNumber' en lugar de la variable fantasma 'selectedTableId'
+  // También comparamos con 't.number' para ser consistentes.
   const currentSelectedTable =
-    tables.find((t) => t.id === selectedTableId) || null; // --- CARGAR MESAS ---
+    tables.find((t) => t.number === selectedTableNumber) || null;
 
+  // --- CARGAR MESAS ---
   useEffect(() => {
     const fetchMesas = async () => {
       try {
         const response = await axios.get(`${API_URL}/`);
-        // Ordenamos por número para que aparezcan 1, 2, 3...
         const transformedTables = transformData(response.data).sort((a, b) => a.number - b.number);
         setTables(transformedTables);
       } catch (error) {
@@ -52,35 +51,30 @@ const TablesGrid = ({ onNavigateToMenu }) => {
       }
     };
     fetchMesas();
-  }, []); // --- MANEJAR SELECCIÓN (Llama al toggle en TablesView) ---
+  }, []);
 
   // --- MANEJAR SELECCIÓN ---
   const handleSelect = (table) => {
-    setSelectedTableNumber(table.number);
-    setNumPersonas(""); // Reiniciar input
-    setErrorMsg("");    // Limpiar errores previos
+    setSelectedTableNumber(table.number); // Aquí guardamos el NÚMERO
+    setNumPersonas(""); 
+    setErrorMsg("");    
   };
 
-  // --- VALIDACIÓN DE INPUT EN TIEMPO REAL ---
+  // --- VALIDACIÓN DE INPUT ---
   const handlePersonasChange = (e) => {
     const value = e.target.value;
-    setErrorMsg(""); // Limpiamos error al escribir
+    setErrorMsg(""); 
 
-    // Si está vacío, lo permitimos (para poder borrar)
     if (value === "") {
       setNumPersonas("");
       return;
     }
 
     const num = parseInt(value, 10);
-
-    // Validación defensiva
     if (isNaN(num)) return;
 
     if (currentSelectedTable && num > currentSelectedTable.capacity) {
       setErrorMsg(`¡La mesa solo tiene ${currentSelectedTable.capacity} sillas!`);
-      // Aún así permitimos escribirlo visualmente o lo bloqueamos según prefieras. 
-      // Aquí lo permito pero muestro error y bloquearé el botón.
     }
     
     setNumPersonas(num);
@@ -90,7 +84,6 @@ const TablesGrid = ({ onNavigateToMenu }) => {
   const handleApartar = async () => {
     if (!currentSelectedTable || !numPersonas) return;
 
-    // Validación final antes de enviar
     if (numPersonas > currentSelectedTable.capacity) {
         setErrorMsg("Excede la capacidad máxima.");
         return;
@@ -99,12 +92,11 @@ const TablesGrid = ({ onNavigateToMenu }) => {
     try {
       setLoading(true);
 
-      // 1. Backend: Ocupar la mesa (PATCH)
+      // Usamos el ID real para el backend, aunque seleccionemos por número
       await axios.patch(`${API_URL}/${currentSelectedTable.id}/`, {
-        estado: false, // Ocupada
+        estado: false,
       });
 
-      // 2. Frontend: Preparar objeto
       const mesaActiva = {
         id: currentSelectedTable.id,
         number: currentSelectedTable.number,
@@ -112,11 +104,9 @@ const TablesGrid = ({ onNavigateToMenu }) => {
         personas: numPersonas,
       };
 
-      // 3. Navegación
       if (onNavigateToMenu) {
         onNavigateToMenu(mesaActiva);
       } else {
-        // Fallback robusto por si falta la prop
         sessionStorage.setItem("mesa_activa", JSON.stringify(mesaActiva));
         navigate("/menu"); 
       }
@@ -125,8 +115,9 @@ const TablesGrid = ({ onNavigateToMenu }) => {
       setErrorMsg("No se pudo reservar la mesa. Intente nuevamente.");
       setLoading(false);
     }
-  }; // --- CONTINUAR (SI LA MESA YA ESTABA OCUPADA) ---
+  }; 
 
+  // --- CONTINUAR PEDIDO ---
   const handleContinuarPedido = () => {
     if (currentSelectedTable) {
       const mesaActiva = {
@@ -143,8 +134,9 @@ const TablesGrid = ({ onNavigateToMenu }) => {
         numeroMesa: currentSelectedTable?.number,
       },
     });
-  }; // --- RENDERIZADO ---
+  }; 
 
+  // --- RENDERIZADO ---
   if (loading) {
     return (
       <div className="p-6 bg-gray-100 min-h-screen flex items-center justify-center">
@@ -153,9 +145,7 @@ const TablesGrid = ({ onNavigateToMenu }) => {
           <div className="text-xl font-bold text-red-800 tracking-wider">
             Cargando Restaurante...
           </div>
-                 {" "}
         </div>
-             {" "}
       </div>
     );
   }
@@ -168,7 +158,6 @@ const TablesGrid = ({ onNavigateToMenu }) => {
           MAPA DE MESAS
         </h1>
 
-        {/* FEEDBACK DE ERROR GENERAL (ej: fallo de conexión) */}
         {errorMsg && !currentSelectedTable && (
             <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded" role="alert">
                 <p>{errorMsg}</p>
@@ -181,14 +170,14 @@ const TablesGrid = ({ onNavigateToMenu }) => {
             <TableCell
               key={table.number}
               table={table}
-              isSelected={selectedTableId === table.id}
+              // 🔥 CORRECCIÓN 2: Comparamos NÚMERO con NÚMERO
+              isSelected={selectedTableNumber === table.number}
               onSelect={handleSelect}
             />
           ))}
-                 {" "}
         </div>
 
-        {/* --- PANEL DE ACCIÓN (Aparece al seleccionar) --- */}
+        {/* --- PANEL DE ACCIÓN --- */}
         {currentSelectedTable && (
           <div className="mt-8 pt-6 border-t border-gray-100 animate-fade-in-up">
             
@@ -224,7 +213,6 @@ const TablesGrid = ({ onNavigateToMenu }) => {
                   </div>
                 </div>
 
-                {/* MENSAJE DE ERROR ESPECÍFICO DE VALIDACIÓN */}
                 {errorMsg && (
                     <p className="mt-2 text-red-600 font-bold text-sm text-center sm:text-right animate-pulse">
                         ⚠️ {errorMsg}
@@ -233,7 +221,6 @@ const TablesGrid = ({ onNavigateToMenu }) => {
 
                 <button
                   onClick={handleApartar}
-                  // Deshabilitamos si no hay personas o si hay un error de validación
                   disabled={!numPersonas || !!errorMsg}
                   className={`w-full mt-4 py-3 px-6 text-white font-extrabold text-lg rounded-xl shadow-lg transition-all transform
                     ${(!numPersonas || !!errorMsg) 
@@ -265,9 +252,7 @@ const TablesGrid = ({ onNavigateToMenu }) => {
             )}
           </div>
         )}
-             {" "}
       </div>
-         {" "}
     </div>
   );
 };
