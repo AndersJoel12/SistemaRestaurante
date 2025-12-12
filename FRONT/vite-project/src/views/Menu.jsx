@@ -151,6 +151,9 @@ const Menu = () => {
       }
     }
 
+    const orderToSend = activeOrder;
+    if (orderToSend.length === 0) return;
+
     const payload = {
       mesa_id: targetTableId,
       empleado_id: userId, // Puede ser null si es auto-servicio
@@ -168,6 +171,32 @@ const Menu = () => {
 
     try {
       await axios.post(URL_PEDIDOS, payload, { headers });
+
+      const stockUpdates = orderToSend.map(async (item) => {
+        const currentDish = dishes.find(d => String(d.id) === String(item.id));
+        if (!currentDish) {
+          console.warn(`Plato ID ${item.id} no encontrado en el estado local. No se actualiza stock.`);
+          return;
+        }
+
+        const currentStock = currentDish.stock || 0;
+        const newStock = currentStock - item.quantity;
+
+        const updateData = {
+          stock: Math.max(0, newStock),
+        };
+
+        try {
+          await axios.patch(`${URL_DISHES}/${item.id}/`, updateData, {
+            headers: { "Content-Type": "application/json" }, // Usamos JSON
+          });
+        } catch (patchError) {
+          console.error(`Error al actualizar stock para plato ${item.id}:`, patchError);
+          showNotification("warning", `Advertencia: Fallo al actualizar stock de ${item.nombre}.`);
+        }
+      });
+
+      await Promise.all(stockUpdates);
 
       showNotification("success", `¡Pedido enviado a Mesa ${targetTableNumber}!`);
       

@@ -15,6 +15,7 @@ const normalizePlato = (plato) => {
   const rawStock = parseInt(plato.stock || 0, 10);
   const isAvailable = plato.disponible ?? plato.available ?? rawStock > 0;
 
+
   return {
     id: plato.id,
     name: plato.nombre || plato.name || "",
@@ -22,6 +23,7 @@ const normalizePlato = (plato) => {
     price: parseFloat(plato.precio || plato.price || 0),
     stock: rawStock,
     available: isAvailable,
+    category: plato.categoria,
     category_id: plato.categoria_id,
     imagen_url: plato.imagen,
   };
@@ -92,13 +94,13 @@ const GestionMenu = () => {
   const handleFormChange = (arg1, arg2) => {
     let name, value;
     if (arg1 && arg1.target) {
-        // Caso 1: Es un evento (onChange normal)
-        name = arg1.target.name;
-        value = arg1.target.value;
+      // Caso 1: Es un evento (onChange normal)
+      name = arg1.target.name;
+      value = arg1.target.value;
     } else {
-        // Caso 2: Llamada manual (handleFormChange('precio', 50))
-        name = arg1;
-        value = arg2;
+      // Caso 2: Llamada manual (handleFormChange('precio', 50))
+      name = arg1;
+      value = arg2;
     }
     setEditingItem((prev) => ({ ...prev, [name]: value }));
   };
@@ -165,7 +167,6 @@ const GestionMenu = () => {
     formData.append("descripcion", editingItem.descripcion);
     formData.append("precio", editingItem.price);
     formData.append("stock", rawStock);
-  
 
     let isAvailableForAPI;
     if (rawStock <= 0) {
@@ -182,9 +183,10 @@ const GestionMenu = () => {
     }
     formData.append("disponible", isAvailableForAPI);
 
-    // Asegurar envío correcto del ID de categoría
+
     const catInt = parseInt(editingItem.category, 10);
     formData.append("categoria_id", catInt);
+    formData.append("categoria_escritura", catInt);
 
     if (imagenArchivo) {
       formData.append("imagen", imagenArchivo);
@@ -253,11 +255,14 @@ const GestionMenu = () => {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen font-sans pb-48 relative" role="main">
+    <div
+      className="bg-gray-100 min-h-screen font-sans pb-48 relative"
+      role="main"
+    >
       <Header />
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <MessageAlert msg={message} />
-        
+
         {/* Controles */}
         <div
           className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-md sticky top-2 z-10"
@@ -265,7 +270,9 @@ const GestionMenu = () => {
           aria-label="Filtros y acciones"
         >
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <label htmlFor="search-input" className="sr-only">Buscar plato</label>
+            <label htmlFor="search-input" className="sr-only">
+              Buscar plato
+            </label>
             <input
               id="search-input"
               type="text"
@@ -275,7 +282,9 @@ const GestionMenu = () => {
               className="border border-gray-300 rounded-lg px-4 py-3 w-full sm:w-64 focus:ring-2 focus:ring-red-500 outline-none"
             />
 
-            <label htmlFor="cat-filter" className="sr-only">Filtrar categoría</label>
+            <label htmlFor="cat-filter" className="sr-only">
+              Filtrar categoría
+            </label>
             <select
               id="cat-filter"
               value={filtroCategoria}
@@ -301,12 +310,15 @@ const GestionMenu = () => {
         </div>
 
         {/* Vista de Tarjetas (Móvil) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden" role="list">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden"
+          role="list"
+        >
           {platosFiltrados.map((dish) => {
             const catName = getCategoryName(dish);
             const isAvailable = dish.available ?? true;
             const stock = dish.stock || 0;
-            
+
             return (
               <div
                 key={dish.id}
@@ -347,34 +359,47 @@ const GestionMenu = () => {
                 </div>
 
                 <div className="flex justify-between items-center mt-1 gap-2">
-                    {/* Badge de estado */}
-                    <span 
-                        className={`py-1 px-2 rounded text-[10px] font-bold uppercase ${
-                            stock <= 0 ? "bg-red-100 text-red-700" :
-                            isAvailable ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                        }`}
-                        role="status"
-                        aria-label={`Estado: ${stock <= 0 ? "Agotado" : isAvailable ? "Disponible" : "Pausado"}`}
-                    >
-                        {stock <= 0 ? "AGOTADO" : isAvailable ? "DISPONIBLE" : "PAUSADO"}
-                    </span>
+                  {/* Badge de estado */}
+                  <span
+                    className={`py-1 px-2 rounded text-[10px] font-bold uppercase ${
+                      stock <= 0
+                        ? "bg-red-100 text-red-700"
+                        : isAvailable
+                        ? "bg-green-100 text-green-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`}
+                    role="status"
+                    aria-label={`Estado: ${
+                      stock <= 0
+                        ? "Agotado"
+                        : isAvailable
+                        ? "Disponible"
+                        : "Pausado"
+                    }`}
+                  >
+                    {stock <= 0
+                      ? "AGOTADO"
+                      : isAvailable
+                      ? "DISPONIBLE"
+                      : "PAUSADO"}
+                  </span>
 
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => openModal(dish)}
-                            className="p-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
-                            aria-label={`Editar ${dish.name}`}
-                        >
-                            ✏️
-                        </button>
-                        <button
-                            onClick={() => handleDelete(dish.id)}
-                            className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100"
-                            aria-label={`Eliminar ${dish.name}`}
-                        >
-                            🗑️
-                        </button>
-                    </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openModal(dish)}
+                      className="p-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
+                      aria-label={`Editar ${dish.name}`}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleDelete(dish.id)}
+                      className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100"
+                      aria-label={`Eliminar ${dish.name}`}
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -383,16 +408,54 @@ const GestionMenu = () => {
 
         {/* Vista de Tabla (Escritorio) */}
         <div className="hidden md:block overflow-x-auto bg-white rounded-xl shadow-md border border-gray-100">
-          <table className="min-w-full divide-y divide-gray-200" aria-label="Inventario de platos">
+          <table
+            className="min-w-full divide-y divide-gray-200"
+            aria-label="Inventario de platos"
+          >
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase">Imagen</th>
-                <th scope="col" className="py-4 px-6 text-left text-xs font-bold text-gray-600 uppercase">Detalles</th>
-                <th scope="col" className="py-4 px-6 text-left text-xs font-bold text-gray-600 uppercase">Categoría</th>
-                <th scope="col" className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase">Precio</th>
-                <th scope="col" className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase">Stock</th>
-                <th scope="col" className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase">Estado</th>
-                <th scope="col" className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase">Acciones</th>
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Imagen
+                </th>
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-left text-xs font-bold text-gray-600 uppercase"
+                >
+                  Detalles
+                </th>
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-left text-xs font-bold text-gray-600 uppercase"
+                >
+                  Categoría
+                </th>
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Precio
+                </th>
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Stock
+                </th>
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Estado
+                </th>
+                <th
+                  scope="col"
+                  className="py-4 px-6 text-center text-xs font-bold text-gray-600 uppercase"
+                >
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody className="text-gray-700 text-sm divide-y divide-gray-200">
@@ -402,7 +465,10 @@ const GestionMenu = () => {
                 const stock = dish.stock || 0;
 
                 return (
-                  <tr key={dish.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={dish.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                     <td className="py-3 px-6 text-center">
                       <img
                         src={dish.imagen_url || "https://placehold.co/40"}
@@ -433,12 +499,19 @@ const GestionMenu = () => {
                     <td className="py-3 px-6 text-center">
                       <span
                         className={`py-1 px-3 rounded-full text-xs font-bold ${
-                            stock <= 0 ? "bg-red-100 text-red-700" :
-                            isAvailable ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                          stock <= 0
+                            ? "bg-red-100 text-red-700"
+                            : isAvailable
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
                         }`}
                         role="status"
                       >
-                        {stock <= 0 ? "AGOTADO" : isAvailable ? "DISPONIBLE" : "PAUSADO"}
+                        {stock <= 0
+                          ? "AGOTADO"
+                          : isAvailable
+                          ? "DISPONIBLE"
+                          : "PAUSADO"}
                       </span>
                     </td>
                     <td className="py-3 px-6 text-center space-x-3">
@@ -489,7 +562,10 @@ const GestionMenu = () => {
 
             <div className="p-6 overflow-y-auto">
               <div className="mb-4">
-                <label htmlFor="field-name" className="block text-sm font-bold text-gray-700 mb-1">
+                <label
+                  htmlFor="field-name"
+                  className="block text-sm font-bold text-gray-700 mb-1"
+                >
                   Nombre
                 </label>
                 <input
@@ -504,7 +580,10 @@ const GestionMenu = () => {
               </div>
 
               <div className="mb-4">
-                <label htmlFor="field-desc" className="block text-sm font-bold text-gray-700 mb-1">
+                <label
+                  htmlFor="field-desc"
+                  className="block text-sm font-bold text-gray-700 mb-1"
+                >
                   Descripción
                 </label>
                 <textarea
@@ -519,7 +598,10 @@ const GestionMenu = () => {
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label htmlFor="field-price" className="block text-sm font-bold text-gray-700 mb-1">
+                  <label
+                    htmlFor="field-price"
+                    className="block text-sm font-bold text-gray-700 mb-1"
+                  >
                     Precio ($)
                   </label>
                   <input
@@ -534,7 +616,10 @@ const GestionMenu = () => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="field-stock" className="block text-sm font-bold text-gray-700 mb-1">
+                  <label
+                    htmlFor="field-stock"
+                    className="block text-sm font-bold text-gray-700 mb-1"
+                  >
                     Stock
                   </label>
                   <input
@@ -552,7 +637,10 @@ const GestionMenu = () => {
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label htmlFor="field-cat" className="block text-sm font-bold text-gray-700 mb-1">
+                  <label
+                    htmlFor="field-cat"
+                    className="block text-sm font-bold text-gray-700 mb-1"
+                  >
                     Categoría
                   </label>
                   <select
@@ -570,7 +658,10 @@ const GestionMenu = () => {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="field-avail" className="block text-sm font-bold text-gray-700 mb-1">
+                  <label
+                    htmlFor="field-avail"
+                    className="block text-sm font-bold text-gray-700 mb-1"
+                  >
                     Disponibilidad
                   </label>
                   <select
@@ -587,7 +678,10 @@ const GestionMenu = () => {
               </div>
 
               <div className="mb-4">
-                <label htmlFor="field-img" className="block text-sm font-bold text-gray-700 mb-1">
+                <label
+                  htmlFor="field-img"
+                  className="block text-sm font-bold text-gray-700 mb-1"
+                >
                   Imagen
                 </label>
                 <input

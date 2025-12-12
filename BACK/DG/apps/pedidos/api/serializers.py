@@ -55,7 +55,10 @@ class PedidoSerializer(serializers.ModelSerializer):
     empleado_id = serializers.PrimaryKeyRelatedField(
         source='empleado',
         queryset=Empleado.objects.filter(),
+        allow_null=True
     )
+
+    empleado_nombre = serializers.SerializerMethodField(read_only=True)
     
     # DEJA ESTO COMENTADO POR AHORA (Evita el error 500 anterior)
     # total_items = serializers.SerializerMethodField()
@@ -65,7 +68,8 @@ class PedidoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 
             'mesa_id', 
-            'empleado_id', 
+            'empleado_id',
+            'empleado_nombre', 
             'fecha', 
             'hora', 
             'observacion', 
@@ -75,7 +79,26 @@ class PedidoSerializer(serializers.ModelSerializer):
             'items_detalle', 
             'total_items' # COMENTADO
         ]
-        read_only_fields = ['id', 'fecha', 'hora', 'CostoTotal']
+        read_only_fields = ['id', 'fecha', 'hora', 'CostoTotal', 'empleado_nombre']
+
+    def get_empleado_nombre(self, obj):
+        """
+        Devuelve el nombre completo del empleado, o 'Cliente' si es nulo.
+        """
+        if obj.empleado:
+            # Tu modelo User tiene el método __str__ que devuelve 'name last_name'.
+            # Usar str(obj.empleado) es una forma limpia de obtenerlo.
+            # Alternativamente, puedes construirlo: f'{obj.empleado.name} {obj.empleado.last_name}'
+            full_name = str(obj.empleado).strip()
+            
+            # Si el nombre completo es vacío (por si name/last_name son nulls/blancos)
+            if full_name:
+                return full_name
+            
+            # Si tiene nombre de usuario pero no nombre completo
+            return obj.empleado.username 
+            
+        return "Cliente (Auto-servicio)"
 
         #FUNCION COMENTADA POR AHORA
     def get_total_items(self, obj):
