@@ -406,7 +406,7 @@ const GestionMenu = () => {
                   scope="col"
                   className="py-4 px-6 text-left text-xs font-bold text-gray-600 uppercase"
                 >
-                  Nombre
+                  Nombres
                 </th>
 
                 <th
