@@ -14,6 +14,9 @@ const PAGE_TITLES = {
   "billing": "FACTURACIÓN",
   "manage-users": "ADMINISTRACIÓN USUARIOS",
   "manage-menu": "ADMINISTRACIÓN MENÚ",
+  "manage-table": "ADMINISTRACIÓN MESA",
+  "manage-category": "ADMINISTRACIÓN CATEGORÍA",
+  "manage-billing": "ADMINISTRACIÓN FACTURAS",
   "unauthorized": "ACCESO DENEGADO"
 };
 

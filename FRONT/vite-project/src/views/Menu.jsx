@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; // Usamos Link en lugar de NavButton custom para simplificar
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 
+// Componentes
 import MenuItem from "../components/menu/MenuItem.jsx";
 import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
 import PreviewOrder from "../components/menu/PreviewOrder.jsx";
 import Header from "../components/Header.jsx";
 import Notification from "../components/Notification.jsx";
-import NavButton from "../components/Navbutton.jsx";
-// --- CONFIGURACIÓN API ---
-const API_BASE = "http://localhost:8000/api";
+
+// --- CONFIGURACIÓN API (ROBUSTA) ---
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 const URL_CATEGORY = `${API_BASE}/categorias`;
 const URL_DISHES = `${API_BASE}/productos`;
-const URL_PEDIDOS = `${API_BASE}/pedidos/`;
+const URL_PEDIDOS = `${API_BASE}/pedidos/`; // Ojo con la barra al final según tu backend
 const URL_MESAS = `${API_BASE}/mesas`;
 
 const Menu = () => {
@@ -23,17 +24,18 @@ const Menu = () => {
   const [dishes, setDishes] = useState([]);
   const [category, setCategory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [apiError, setApiError] = useState(null);
-
-  const [availableTables, setAvailableTables] = useState([]);
-  const [showTableModal, setShowTableModal] = useState(false);
-
-  // 🔥 NUEVO ESTADO: Para controlar el modal de "Llamar al mesero"
+  
+  // Estado para el modal de "Llamar al mesero"
   const [showWaiterModal, setShowWaiterModal] = useState(false);
 
+  // Inicialización perezosa (Lazy Init) para leer sessionStorage solo una vez
   const [activeOrder, setActiveOrder] = useState(() => {
-    const savedOrder = sessionStorage.getItem("active_order");
-    return savedOrder ? JSON.parse(savedOrder) : [];
+    try {
+      const savedOrder = sessionStorage.getItem("active_order");
+      return savedOrder ? JSON.parse(savedOrder) : [];
+    } catch {
+      return [];
+    }
   });
 
   const [activeCategory, setActiveCategory] = useState("all");
@@ -41,94 +43,85 @@ const Menu = () => {
   const [mesaActiva, setMesaActiva] = useState(null);
   const [notification, setNotification] = useState(null);
 
+  // Helper para notificaciones
   const showNotification = useCallback((type, message) => {
     setNotification({ type, message });
-    const timer = setTimeout(() => setNotification(null), 3000);
-    return () => clearTimeout(timer);
+    setTimeout(() => setNotification(null), 3000);
   }, []);
 
-  // --- PERSISTENCIA ---
+  // --- EFECTOS ---
+  
+  // 1. Persistencia del Pedido
   useEffect(() => {
     sessionStorage.setItem("active_order", JSON.stringify(activeOrder));
   }, [activeOrder]);
 
-  // --- CARGAR MESA ---
+  // 2. Cargar Mesa Activa
   useEffect(() => {
     const storedMesa = sessionStorage.getItem("mesa_activa");
     if (storedMesa) {
       try {
-        const parsed = JSON.parse(storedMesa);
-        setMesaActiva(parsed);
+        setMesaActiva(JSON.parse(storedMesa));
       } catch (e) {
-        console.error("❌ Error parseando mesa:", e);
-        setMesaActiva(null);
+        console.error("Error leyendo mesa:", e);
       }
     }
   }, []);
 
-  // --- FETCH MESAS (Se mantiene por si acaso, pero ya no es la prioridad para el cliente) ---
-  const fetchTables = async () => {
-    try {
-      const response = await axios.get(URL_MESAS);
-      const freeTables = response.data.filter(
-        (table) =>
-          table.estado.toLowerCase() === "libre" ||
-          table.estado.toLowerCase() === "disponible"
-      );
-      setAvailableTables(freeTables);
-    } catch (error) {
-      console.error("❌ Error cargando mesas:", error);
-      showNotification("error", "No se pudieron cargar las mesas.");
-    }
-  };
-
-  // --- CARGAR MENÚ ---
-  const fetchMenuData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [catResponse, dishResponse] = await Promise.all([
-        axios.get(URL_CATEGORY),
-        axios.get(URL_DISHES),
-      ]);
-      setCategory([
-        { id: "all", nombre: "Todas las categorías" },
-        ...catResponse.data,
-      ]);
-      setDishes(dishResponse.data);
-    } catch (error) {
-      console.error("❌ Error menú:", error);
-      setApiError("Error de conexión al cargar menú.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // 3. Cargar Datos del Menú
   useEffect(() => {
-    fetchMenuData();
-  }, [fetchMenuData]);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [catRes, dishRes] = await Promise.all([
+          axios.get(URL_CATEGORY),
+          axios.get(URL_DISHES),
+        ]);
+        
+        setCategory([
+          { id: "all", nombre: "Todas las categorías" },
+          ...catRes.data,
+        ]);
+        setDishes(dishRes.data);
+      } catch (error) {
+        console.error("Error cargando menú:", error);
+        showNotification("error", "No se pudo cargar el menú. Verifica tu conexión.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [showNotification]);
 
-  // --- FILTROS ---
+  // --- LÓGICA DE NEGOCIO ---
+
+  // Filtros optimizados
   const filteredDishes = useMemo(() => {
     return dishes.filter((d) => {
       const matchesCategory =
         String(activeCategory) === "all" ||
         String(d.categoria_id) === String(activeCategory);
+      
       const matchesSearch = (d.nombre || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
+        
       return matchesCategory && matchesSearch;
     });
   }, [dishes, activeCategory, searchTerm]);
 
+  // Total de items
   const totalItems = useMemo(
     () => activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0),
     [activeOrder]
   );
 
+  // Actualizar Pedido
   const updateOrder = (dish, action, newQuantity) => {
     setActiveOrder((prev) => {
       const newOrder = [...prev];
       const index = newOrder.findIndex((item) => item.id === dish.id);
+      
       if (index >= 0) {
         if (action === "remove" || (action === "update" && newQuantity <= 0)) {
           newOrder.splice(index, 1);
@@ -142,28 +135,27 @@ const Menu = () => {
     });
   };
 
-  // --- ENVÍO DE PEDIDO ---
+  // Enviar Pedido a API
   const executeOrderSubmission = async (targetTableId, targetTableNumber) => {
-    console.log(
-      `🚀 [SUBMIT] Iniciando envío para Mesa ID: ${targetTableId} (Nro: ${targetTableNumber})`
-    );
-
     const tokenString = localStorage.getItem("authTokens");
     let token = null;
     let userId = null;
 
     if (tokenString) {
-      const data = JSON.parse(tokenString);
-      token = data.access;
-      userId = jwtDecode(token).user_id;
+      try {
+        const data = JSON.parse(tokenString);
+        token = data.access;
+        userId = jwtDecode(token).user_id;
+      } catch (e) {
+        console.warn("Error decodificando token:", e);
+      }
     }
 
-    // Payload construction
     const payload = {
       mesa_id: targetTableId,
-      empleado_id: userId,
+      empleado_id: userId, // Puede ser null si es auto-servicio
       observacion: "",
-      estado_pedido: "ABIERTO",
+      estado_pedido: "ABIERTO", // O "NUEVO", según tu backend
       items: activeOrder.map((it) => ({
         producto_id: it.id,
         cantidad: it.quantity,
@@ -171,109 +163,87 @@ const Menu = () => {
       })),
     };
 
-    // LOG ESTRATÉGICO
-    console.log(
-      "📦 [PAYLOAD] JSON a enviar:",
-      JSON.stringify(payload, null, 2)
-    );
-
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
-      const response = await axios.post(URL_PEDIDOS, payload, { headers });
-      console.log("✅ [SUCCESS] Respuesta del servidor:", response.data);
+      await axios.post(URL_PEDIDOS, payload, { headers });
 
-      showNotification(
-        "success",
-        `¡Pedido enviado a Mesa ${targetTableNumber}!`
-      );
+      showNotification("success", `¡Pedido enviado a Mesa ${targetTableNumber}!`);
+      
+      // Limpieza
       setActiveOrder([]);
       sessionStorage.removeItem("active_order");
 
-      const mesaActualizada = {
-        ...mesaActiva,
-        id: targetTableId,
-        number: targetTableNumber,
-      };
-      sessionStorage.setItem("mesa_activa", JSON.stringify(mesaActualizada));
-      setMesaActiva(mesaActualizada);
-
+      // Redirigir a vista de pedidos
       setTimeout(() => navigate("/orders"), 1500);
-      setShowTableModal(false);
+      
     } catch (error) {
-      console.error(
-        "❌ [ERROR] Falló el envío:",
-        error.response?.data || error.message
-      );
-      showNotification("error", "Error al enviar el pedido.");
+      console.error("Error enviando pedido:", error);
+      showNotification("error", "Error al enviar el pedido. Intenta de nuevo.");
     }
   };
 
-  // 🔥 ESTA ES LA FUNCIÓN QUE CAMBIAMOS 🔥
+  // Manejador del Botón "Confirmar"
   const handleInitiateOrder = () => {
-    console.log("🖱️ [CLICK] Usuario presionó Confirmar Pedido.");
-
     if (totalItems === 0) return;
 
-    // 🛑 INTERCEPTOR MODIFICADO
-    // Si no hay mesa, o es la mesa virtual 999 (cliente sin mesa asignada)...
-    if (!mesaActiva || mesaActiva.number === "999" || mesaActiva.id === 999) {
-      console.warn("🛑 [INTERCEPTOR] Cliente sin mesa asignada.");
-
-      // Mostramos el modal de "Espera al mesero"
-      setShowWaiterModal(true);
+    // CASO: Cliente sin mesa (Modo Invitado / Mesa 999)
+    if (!mesaActiva || String(mesaActiva.number) === "999") {
+      setShowWaiterModal(true); // Mostrar modal "Llamar mesero"
       return;
     }
 
-    // Si ya tiene mesa real (ej: escaneó un QR real), envía directo
-    console.log("✅ [DIRECT] Mesa válida detectada. Enviando directo.");
+    // CASO: Mesa normal asignada
     executeOrderSubmission(mesaActiva.id, mesaActiva.number);
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col">
-      {/* Header */}
+    <div className="bg-gray-50 min-h-screen flex flex-col font-sans">
+      
+      {/* HEADER + BARRA DE INFO */}
       <div className="sticky top-0 z-40 shadow-md bg-white">
         <Header />
 
         <div className="flex items-center justify-between w-full px-4 py-2 bg-yellow-400 shadow-sm">
-          {/* ⬅️ Botón Mesas (Izquierda) */}
-          <NavButton
+          
+          {/* Botón Mesas */}
+          <Link
             to="/tables"
-            label="Mesas"
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-1 px-3 shadow-md rounded-lg"
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 px-3 shadow-sm rounded-lg flex items-center gap-1"
+            aria-label="Volver al mapa de mesas"
           >
-            🍽️
-          </NavButton>
+            <span>🍽️</span> Mesas
+          </Link>
 
-          {/* Texto centrado */}
+          {/* Info Mesa Activa */}
           {mesaActiva && (
             <div
-              className={`font-bold text-center text-xs px-3 py-1 mx-2 rounded-lg flex-1 ${
-                mesaActiva.number === "999"
+              className={`font-bold text-center text-xs px-3 py-1 mx-2 rounded-lg flex-1 truncate ${
+                String(mesaActiva.number) === "999"
                   ? "bg-blue-100 text-blue-800"
-                  : "bg-yellow-400 text-red-900"
+                  : "bg-yellow-100 text-yellow-900 border border-yellow-300"
               }`}
+              role="status"
             >
-              {mesaActiva.number === "999"
-                ? "🛒 Modo Cliente: Seleccionando productos..."
+              {String(mesaActiva.number) === "999"
+                ? "🛒 Modo Cliente"
                 : `📌 Mesa ${mesaActiva.number}`}
             </div>
           )}
 
-          {/* ➡️ Botón Órdenes (Derecha) */}
-          <NavButton
+          {/* Botón Órdenes */}
+          <Link
             to="/orders"
-            icon="➡️"
-            label="Órdenes"
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-3 shadow-md rounded-lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-3 shadow-sm rounded-lg flex items-center gap-1"
+            aria-label="Ver pedidos activos"
           >
-            🛒
-          </NavButton>
+            🛒 Órdenes
+          </Link>
         </div>
 
         <Notification notification={notification} />
+        
         <MenuFilterBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -283,11 +253,17 @@ const Menu = () => {
         />
       </div>
 
-      {/* Grid de Platos */}
-      <main className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-32">
+      {/* GRID DE PLATOS */}
+      <main 
+        className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-32"
+        role="list"
+        aria-label="Lista de platos del menú"
+      >
         {loading ? (
-          <p className="text-center w-full py-10">Cargando...</p>
-        ) : (
+          <div className="col-span-full flex justify-center items-center py-20">
+            <div className="animate-spin text-4xl">⏳</div>
+          </div>
+        ) : filteredDishes.length > 0 ? (
           filteredDishes.map((dish) => (
             <MenuItem
               key={dish.id}
@@ -296,55 +272,63 @@ const Menu = () => {
               updateOrder={updateOrder}
             />
           ))
+        ) : (
+          <div className="col-span-full text-center text-gray-500 py-10 italic">
+            No se encontraron platos.
+          </div>
         )}
       </main>
 
-      {/* Barra Inferior (Preview Order) */}
+      {/* BARRA INFERIOR (CARRITO) */}
       {totalItems > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 p-4 pointer-events-none">
           <div className="max-w-4xl mx-auto pointer-events-auto">
             <PreviewOrder
               activeOrder={activeOrder}
               onConfirm={handleInitiateOrder}
-              showNotification={showNotification}
               updateOrder={updateOrder}
             />
           </div>
         </div>
       )}
 
-      {/* 🔥 MODAL: AVISO AL MESERO 🔥 */}
+      {/* MODAL: LLAMAR AL MESERO */}
       {showWaiterModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[70]">
-          <div className="bg-white rounded-xl shadow-2xl p-8 w-[90%] max-w-md text-center animate-bounce-in border-t-4 border-blue-500">
+        <div 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="waiter-modal-title"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center animate-bounce-in border-t-8 border-blue-500">
+            
             <div className="mb-6 flex justify-center">
-              <div className="bg-blue-100 p-4 rounded-full">
-                {/* Ícono de campana o usuario */}
-                <span className="text-4xl">🔔</span>
+              <div className="bg-blue-100 p-6 rounded-full shadow-inner">
+                <span className="text-5xl" aria-hidden="true">🔔</span>
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">¡Listo!</h2>
+            <h2 id="waiter-modal-title" className="text-2xl font-black text-gray-800 mb-2">
+                ¡Pedido Listo!
+            </h2>
 
-            <p className="text-gray-600 text-lg mb-6">
-              Mantén esta pantalla abierta. Un mesero se acercará en breve para
-              confirmar tu pedido y asignarte una mesa.
+            <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+              Por favor, <strong>espera a un mesero</strong>. Él escaneará este pedido y te asignará una mesa.
             </p>
 
-            {/* Muestra el total para que el cliente sepa cuánto es */}
-            <div className="bg-gray-100 p-4 rounded-lg mb-6">
-              <p className="text-sm text-gray-500">Total estimado</p>
-              <p className="text-xl font-bold text-green-600">
-                $
-                {activeOrder
-                  .reduce((acc, item) => acc + item.precio * item.quantity, 0)
-                  .toFixed(2)}
+            {/* Resumen de Total */}
+            <div className="bg-gray-50 p-4 rounded-xl mb-6 border border-gray-200">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                  Total Estimado
+              </p>
+              <p className="text-3xl font-black text-green-600">
+                $ {activeOrder.reduce((acc, item) => acc + item.precio * item.quantity, 0).toFixed(2)}
               </p>
             </div>
 
             <button
               onClick={() => setShowWaiterModal(false)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-blue-200"
             >
               Entendido, esperar
             </button>
