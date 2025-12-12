@@ -94,7 +94,8 @@ const GenerarFactura = () => {
     const pedidoSeleccionado = listaPedidos.find(
       (p) => String(p.id) === String(formPago.pedidoId)
     );
-    const costoBase = pedidoSeleccionado
+    // Usamos ?. para seguridad, aunque ya se validó que exista
+    const costoBase = pedidoSeleccionado?.CostoTotal
       ? parseFloat(pedidoSeleccionado.CostoTotal)
       : 0;
 
@@ -142,7 +143,7 @@ const GenerarFactura = () => {
       setLoading(false);
       return;
     }
-    if (!esReferenciaValida) {
+    if (formPago.metodoPago !== "EFECTIVO" && !esReferenciaValida) {
       setMessage({
         type: "error",
         text: "Referencia incompleta (mínimo 6 dígitos).",
@@ -189,6 +190,7 @@ const GenerarFactura = () => {
       if (mesaIdALiberar) {
         try {
           // 🔥 CORRECCIÓN APLICADA: Enviamos BOOLEANO (true) no string
+          // Se asume que el backend interpreta 'estado: true' como 'libre'
           await axios.patch(`${API_MESAS}/${mesaIdALiberar}/`, {
             estado: true,
           });
@@ -226,7 +228,7 @@ const GenerarFactura = () => {
           telefono: "",
         });
         setMessage(null);
-        obtenerPedidos();
+        obtenerPedidos(); // Refresca la lista de pedidos pendientes
       }, 3000);
     } catch (error) {
       console.error("Error al procesar pago:", error);
@@ -265,13 +267,17 @@ const GenerarFactura = () => {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans flex justify-center">
+    // 🎯 CORRECCIÓN 1: Contenedor principal para el scroll y flex vertical.
+    <div className="p-4 md:p-8 bg-gray-100 min-h-screen font-sans flex flex-col items-center overflow-x-hidden">
+      {/* 🎯 CORRECCIÓN 2: Se mantiene la grilla, pero en móvil (o zoom), se apila (grid-cols-1) */}
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* COLUMNA IZQUIERDA */}
+        {/* COLUMNA IZQUIERDA (Principal) */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-red-600">
             {/* CABECERA */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
+              {" "}
+              {/* flex-wrap para zoom en móvil */}
               <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                 💰 Caja / Facturación
               </h2>
@@ -285,7 +291,9 @@ const GenerarFactura = () => {
 
             {/* SELECCIÓN DE PEDIDO */}
             <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+                {" "}
+                {/* flex-wrap para zoom en móvil */}
                 <label className="text-sm font-bold text-gray-500 uppercase flex items-center gap-2">
                   Pedidos por Cobrar *
                   <span
@@ -321,6 +329,7 @@ const GenerarFactura = () => {
                   value={formPago.pedidoId}
                   onChange={handleSeleccionarPedido}
                   disabled={loadingPedidos}
+                  // Añadimos w-full explícito para mejor reflow
                   className="w-full pl-12 pr-4 py-3 text-lg font-bold text-gray-800 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 bg-white appearance-none cursor-pointer disabled:bg-gray-100"
                 >
                   <option value="">
@@ -347,7 +356,9 @@ const GenerarFactura = () => {
             </div>
 
             {/* FORMULARIO DE MONTOS */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {" "}
+              {/* Aseguramos grid-cols-1 en móvil, sm:grid-cols-2 en tablet/zoom normal */}
               <div>
                 <label className="block text-sm font-bold text-gray-500 uppercase mb-2">
                   Impuesto ($)
@@ -403,7 +414,8 @@ const GenerarFactura = () => {
               <label className="block text-sm font-bold text-gray-500 uppercase mb-3">
                 Método de Pago
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* 🎯 CORRECCIÓN 3: Ajustar grid de botones para zoom (2 columnas en móvil) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {METODOS_PAGO.map((metodo) => (
                   <button
                     key={metodo.id}
@@ -412,7 +424,7 @@ const GenerarFactura = () => {
                     }
                     className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 ${
                       formPago.metodoPago === metodo.id
-                        ? "border-red-600 bg-red-50 text-red-700 shadow-md scale-105"
+                        ? "border-red-600 bg-red-50 text-red-700 shadow-md scale-100" // Quitamos el scale-105 para evitar que se desborde al hacer zoom
                         : "border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50"
                     }`}
                   >
@@ -428,7 +440,7 @@ const GenerarFactura = () => {
               <div className="animate-fade-in-up">
                 <InputField
                   label={
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
                       <span>🔢 Nro Referencia (Últimos 6)</span>
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded-full ${
@@ -466,7 +478,7 @@ const GenerarFactura = () => {
                 : "bg-gray-50 border-gray-200"
             }`}
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
               <h2 className="text-xl font-bold text-gray-700 flex items-center gap-2">
                 📄 Factura Fiscal
               </h2>
@@ -504,6 +516,7 @@ const GenerarFactura = () => {
                     name="cedula"
                     value={datosCliente.cedula}
                     onChange={handleClienteChange}
+                    // Añadimos w-full para asegurar el reflow en zoom
                     className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="V-12345678"
                   />
@@ -553,15 +566,20 @@ const GenerarFactura = () => {
             <div className="mt-8 border-t pt-6">
               <button
                 onClick={handleProcesarPago}
-                disabled={loading || !formPago.pedidoId || !esReferenciaValida}
+                disabled={
+                  loading ||
+                  !formPago.pedidoId ||
+                  (formPago.metodoPago !== "EFECTIVO" && !esReferenciaValida)
+                }
                 className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95 flex justify-center items-center gap-2 
-                            ${
-                              loading ||
-                              !formPago.pedidoId ||
-                              !esReferenciaValida
-                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                : "bg-green-600 text-white hover:bg-green-700 hover:shadow-green-200"
-                            }`}
+                                ${
+                                  loading ||
+                                  !formPago.pedidoId ||
+                                  (formPago.metodoPago !== "EFECTIVO" &&
+                                    !esReferenciaValida)
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    : "bg-green-600 text-white hover:bg-green-700 hover:shadow-green-200"
+                                }`}
               >
                 {loading ? (
                   <span>Procesando...</span>

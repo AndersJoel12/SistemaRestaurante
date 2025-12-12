@@ -8,7 +8,7 @@ import MenuFilterBar from "../components/menu/MenuFilterBar.jsx";
 import PreviewOrder from "../components/menu/PreviewOrder.jsx";
 import Header from "../components/Header.jsx";
 import Notification from "../components/Notification.jsx";
-import NavButton from "../components/Navbutton.jsx";
+import NavButton from "../components/Navbutton.jsx"; // Aunque no se usa directamente en este return, es buena práctica mantenerlo si se usa en otros lados.
 // --- CONFIGURACIÓN API ---
 const API_BASE = "http://localhost:8000/api";
 const URL_CATEGORY = `${API_BASE}/categorias`;
@@ -210,7 +210,7 @@ const Menu = () => {
     }
   };
 
-  // 🔥 ESTA ES LA FUNCIÓN QUE CAMBIAMOS 🔥
+  // 🔥 LÓGICA DEL INTERCEPTOR DE MESA (Se mantiene intacta) 🔥
   const handleInitiateOrder = () => {
     console.log("🖱️ [CLICK] Usuario presionó Confirmar Pedido.");
 
@@ -232,9 +232,13 @@ const Menu = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col">
-      {/* Header */}
-      <div className="sticky top-0 z-40 shadow-md bg-white">
+    // 🎯 CORRECCIÓN 1: Contenedor principal para el scroll y flex vertical.
+    <div className="bg-gray-50 min-h-screen flex flex-col overflow-x-hidden">
+      {/* 🎯 CORRECCIÓN 2: Header y Filtros agrupados en una sección sticky. 
+          Aseguramos que el 'sticky top-0' funcione sobre el contenido principal.
+          Usamos 'w-full' para que ocupe todo el ancho y no se rompa al hacer zoom.
+      */}
+      <div className="sticky top-0 z-40 shadow-md bg-white w-full">
         <Header />
 
         {mesaActiva && (
@@ -251,6 +255,8 @@ const Menu = () => {
           </div>
         )}
         <Notification notification={notification} />
+
+        {/* 🎯 Nota: MenuFilterBar debe ser responsive internamente (flex-wrap) para manejar el zoom de las categorías. */}
         <MenuFilterBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -260,10 +266,17 @@ const Menu = () => {
         />
       </div>
 
-      {/* Grid de Platos */}
-      <main className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-32">
+      {/* 🎯 CORRECCIÓN 3: Grid de Platos (El contenido principal que debe hacer scroll) 
+          - flex-grow: Permite que este main ocupe el espacio restante y empuje la barra inferior.
+          - pb-36: Aumentamos el padding inferior para asegurar que el contenido no quede oculto bajo la barra fija inferior (PreviewOrder) al final del scroll, incluso con mucho zoom.
+      */}
+      <main className="flex-grow p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-36 max-w-7xl mx-auto w-full">
         {loading ? (
           <p className="text-center w-full py-10">Cargando...</p>
+        ) : apiError ? (
+          <p className="text-center w-full py-10 text-red-600 font-semibold">
+            Error al cargar el menú: {apiError}
+          </p>
         ) : (
           filteredDishes.map((dish) => (
             <MenuItem
@@ -276,9 +289,9 @@ const Menu = () => {
         )}
       </main>
 
-      {/* Barra Inferior (Preview Order) */}
+      {/* Barra Inferior (Preview Order) - Se mantiene fixed. */}
       {totalItems > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 p-4 pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 z-30 p-4 pointer-events-none w-full">
           <div className="max-w-4xl mx-auto pointer-events-auto">
             <PreviewOrder
               activeOrder={activeOrder}
@@ -290,7 +303,7 @@ const Menu = () => {
         </div>
       )}
 
-      {/* 🔥 MODAL: AVISO AL MESERO 🔥 */}
+      {/* MODAL: AVISO AL MESERO (Se mantiene intacto) */}
       {showWaiterModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[70]">
           <div className="bg-white rounded-xl shadow-2xl p-8 w-[90%] max-w-md text-center animate-bounce-in border-t-4 border-blue-500">

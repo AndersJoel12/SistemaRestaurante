@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import TablesGrid from "../components/TableGrid";
 // Asumimos que tienes un Header, si no lo tienes, puedes omitir la línea o importarlo
 import Header from "../components/Header";
+// Necesitamos NavButton para los botones de navegación
+import NavButton from "../components/Navbutton";
 
 // Esta es la vista que contiene el TablesGrid
 function TablesView() {
@@ -12,6 +14,7 @@ function TablesView() {
    * Maneja la selección de una mesa activa y la guarda en sesión.
    * @param {object} mesaActiva - Objeto de la mesa seleccionada { id, number, capacity, ... }.
    */
+
   const handleNavigateToMenu = (mesaActiva) => {
     // 1. Validamos que el objeto tenga al menos la ID para ser útil
     if (!mesaActiva || !mesaActiva.id) {
@@ -27,19 +30,35 @@ function TablesView() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-            <Header />     {" "}
-      {/* Contenedor Responsivo: 
-          max-w-7xl y mx-auto centran y limitan el contenido en pantallas grandes.
-          px-4, sm:px-6, lg:px-8 añaden un padding lateral adaptativo para móviles y desktop.
-          py-8 agrega espacio vertical para separar del header.
-      */}
-           {" "}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-               {" "}
-        {/* TablesGrid ahora maneja la cuadrícula y la lógica de selección */}
-                <TablesGrid onNavigateToMenu={handleNavigateToMenu} />     {" "}
+      <Header />
+      <div className="flex justify-center gap-4 py-3 border-b border-gray-200 bg-white">
+        <NavButton
+          to="/menu"
+          ariaLabel="Ir a Menú"
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center font-bold shadow-md"
+        >
+          📝 Menú
+        </NavButton>
+
+        <NavButton
+          to="/orders"
+          ariaLabel="Ir a Pedidos/Órdenes"
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center font-bold shadow-md"
+        >
+          🧾 Pedidos
+        </NavButton>
+        <NavButton
+          to="/billing"
+          ariaLabel="Ir a Facturación"
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center font-bold shadow-md"
+        >
+          💰 Facturación
+        </NavButton>
       </div>
-         {" "}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <TablesGrid onNavigateToMenu={handleNavigateToMenu} />
+      </div>
     </div>
   );
 }
