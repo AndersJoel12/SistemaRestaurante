@@ -39,6 +39,7 @@ class ProductoSerializer(serializers.ModelSerializer):
             'imagen',
             'descripcion',
             'precio',
+            'stock',
             'disponible',
             'categoria',
             'categoria_id',
@@ -49,6 +50,11 @@ class ProductoSerializer(serializers.ModelSerializer):
     def validate_precio(self, value):
         if value < 0:
             raise serializers.ValidationError("El precio debe ser un valor positivo.")
+        return value
+    
+    def validate_stock(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El stock no puede ser negativo.")
         return value
 
 

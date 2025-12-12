@@ -25,12 +25,12 @@ function NavBar() {
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Usuarios</span>
           </Link>
 
-          <Link to="/manage-menu" className="group flex flex-col items-center transition duration-300">
-            <span className="group-hover:text-white group-hover:scale-110 transition-transform">Productos</span>
-          </Link>
-
           <Link to="/manage-category" className="group flex flex-col items-center transition duration-300">
             <span className="group-hover:text-white group-hover:scale-110 transition-transform">Categorías</span>
+          </Link>
+
+          <Link to="/manage-menu" className="group flex flex-col items-center transition duration-300">
+            <span className="group-hover:text-white group-hover:scale-110 transition-transform">Productos</span>
           </Link>
 
           <Link to="/manage-table" className="group flex flex-col items-center transition duration-300">

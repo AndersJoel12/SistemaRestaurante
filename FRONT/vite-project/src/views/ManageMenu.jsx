@@ -4,6 +4,7 @@ import MessageAlert from "../components/MessageAlert.jsx";
 import InputField from "../components/InputField.jsx";
 import NavBar from "../components/Navigation.jsx";
 import Header from "../components/Header.jsx";
+
 const API_PRODUCTOS = "http://localhost:8000/api/productos";
 const API_CATEGORIAS = "http://localhost:8000/api/categorias";
 
@@ -186,18 +187,18 @@ const GestionMenu = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen font-sans pb-48 relative">
-            <Header></Header>     {" "}
+       <Header></Header>
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
-                <MessageAlert msg={message} />       {" "}
-        {/* Controles (Búsqueda, Filtro, Botón Crear) */}       {" "}
+                <MessageAlert msg={message} />   
+        {/* Controles (Búsqueda, Filtro, Botón Crear) */}      
         <div
           className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-md sticky top-2 z-10"
           role="toolbar"
           aria-label="Filtros y acciones de menú"
         >
-                   {" "}
+                   
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                       {" "}
+                       
             <input
               type="text"
               placeholder="🔍 Buscar plato..."

@@ -6,6 +6,12 @@ class UserManager(BaseUserManager):
     def _create_user(self, username, email, name, last_name, cedula, rol ,password, is_staff, is_superuser, **extra_fields):
         if not username:
             raise ValueError('El nombre de usuario es obligatorio')
+        
+        if not email:
+            raise ValueError('El correo de usuario es obligatorio')
+        
+        if not cedula:
+            raise ValueError('La cedula de usuario es obligatorio')
 
         user = self.model(
             username=username,
@@ -60,7 +66,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         db_table = 'usuario'
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['name', 'last_name', 'cedula']
+    REQUIRED_FIELDS = ['username', 'name', 'last_name', 'cedula']
 
     def __str__(self):
         return f'{self.name} {self.last_name}'
