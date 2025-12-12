@@ -8,7 +8,7 @@ import ReCAPTCHA from "react-google-recaptcha";
 function Home() {
   const [showModal, setShowModal] = useState(false); // Modal Staff
   const [showGuestModal, setShowGuestModal] = useState(false); // Modal Cliente
-  
+
   const navigate = useNavigate();
   const guestCaptchaRef = useRef(null);
 
@@ -16,10 +16,14 @@ function Home() {
   const getRedirectPath = (role) => {
     const normalizedRole = (role || "").toLowerCase();
     switch (normalizedRole) {
-      case "administrador": return "/manage-users";
-      case "cocinero": return "/kitchen";
-      case "mesero": return "/tables";
-      default: return "/unauthorized";
+      case "administrador":
+        return "/manage-users";
+      case "cocinero":
+        return "/kitchen";
+      case "mesero":
+        return "/Orders";
+      default:
+        return "/unauthorized";
     }
   };
 
@@ -39,24 +43,24 @@ function Home() {
 
   const handleGuestCaptchaResolved = (token) => {
     if (token) {
-        setTimeout(() => {
-            const dummyTable = {
-                id: 999,
-                number: "999",
-                capacity: 1,
-                status: "virtual",
-            };
-            sessionStorage.setItem("mesa_activa", JSON.stringify(dummyTable));
-            setShowGuestModal(false);
-            navigate("/menu");
-        }, 500);
+      setTimeout(() => {
+        const dummyTable = {
+          id: 999,
+          number: "999",
+          capacity: 1,
+          status: "virtual",
+        };
+        sessionStorage.setItem("mesa_activa", JSON.stringify(dummyTable));
+        setShowGuestModal(false);
+        navigate("/menu");
+      }, 500);
     }
   };
 
   const closeGuestModal = () => {
-      setShowGuestModal(false);
-      if(guestCaptchaRef.current) guestCaptchaRef.current.reset();
-  }
+    setShowGuestModal(false);
+    if (guestCaptchaRef.current) guestCaptchaRef.current.reset();
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -90,7 +94,9 @@ function Home() {
             <span>Realizar Pedido</span>
           </button>
 
-          <div className="text-gray-400 font-bold uppercase text-xs pt-1">O</div>
+          <div className="text-gray-400 font-bold uppercase text-xs pt-1">
+            O
+          </div>
 
           <button
             onClick={() => setShowModal(true)}
@@ -102,7 +108,8 @@ function Home() {
         </div>
 
         <span className="block text-xs text-gray-400 mt-6">
-          Desarrollo y Soporte por <span className="font-semibold text-red-600 ml-1">DeliGo</span>
+          Desarrollo y Soporte por{" "}
+          <span className="font-semibold text-red-600 ml-1">DeliGo</span>
         </span>
       </div>
 
@@ -116,28 +123,27 @@ function Home() {
       {showGuestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center relative border-t-4 border-red-600 transform transition-all scale-100">
-            
             <h3 className="text-xl font-extrabold text-gray-800 mb-2">
-                Seguridad
+              Seguridad
             </h3>
             <p className="text-sm text-gray-500 mb-6">
-                Confirma que eres humano para ver el menú.
+              Confirma que eres humano para ver el menú.
             </p>
 
             <div className="flex justify-center mb-6">
-                <ReCAPTCHA
-                    ref={guestCaptchaRef}
-                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                    onChange={handleGuestCaptchaResolved}
-                />
+              <ReCAPTCHA
+                ref={guestCaptchaRef}
+                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                onChange={handleGuestCaptchaResolved}
+              />
             </div>
-            
+
             {/* 👉 BOTÓN CANCELAR ROJO */}
             <button
-                onClick={closeGuestModal}
-                className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 hover:shadow-lg transition-all duration-300 active:scale-95 uppercase tracking-wide text-sm"
+              onClick={closeGuestModal}
+              className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 hover:shadow-lg transition-all duration-300 active:scale-95 uppercase tracking-wide text-sm"
             >
-                Cancelar
+              Cancelar
             </button>
           </div>
         </div>
