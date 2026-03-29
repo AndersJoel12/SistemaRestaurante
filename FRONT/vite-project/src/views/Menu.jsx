@@ -1,16 +1,10 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import MenuItem from "../components/MenuItem.jsx";
 import PreviewOrder from "../components/PreviewOrder.jsx";
 
-const categories = [
-  { id: "entradas", name: "ENTRADAS" },
-  { id: "sushi", name: "SUSHI" },
-  { id: "bebidas", name: "BEBIDAS" },
-  { id: "postre", name: "POSTRE" },
-];
-
-const dishes = [
+// --- DATOS BASE DEL MENÚ (Copia de seguridad si no hay caché) ---
+const initialDishes = [
   {
     id: 101,
     category: "entradas",
@@ -55,33 +49,51 @@ const dishes = [
   },
 ];
 
+const categories = [
+  { id: "entradas", name: "ENTRADAS" },
+  { id: "sushi", name: "SUSHI" },
+  { id: "bebidas", name: "BEBIDAS" },
+  { id: "postre", name: "POSTRE" },
+];
+
 const Menu = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Estado local de la orden
+  // **LÓGICA DEL CACHÉ TEMPORAL:** Usa el estado de la ruta o los datos iniciales
+  const cachedDishes = location.state?.dishes || initialDishes;
+  const [dishes, setDishes] = useState(cachedDishes); // Estado local de la orden
+
   const [activeOrder, setActiveOrder] = useState([]);
   const [activeCategory, setActiveCategory] = useState("entradas");
+
+  // Sincroniza los platos con el caché si hay cambios
+  useEffect(() => {
+    setDishes(cachedDishes);
+  }, [cachedDishes]);
 
   const filteredDishes = dishes.filter((d) => d.category === activeCategory);
   const totalItems = activeOrder.reduce((sum, i) => sum + (i.quantity || 0), 0);
 
   const goReview = () => {
     if (totalItems === 0) {
-      alert("La orden está vacía. Añade al menos un plato.");
+      console.error("La orden está vacía. Añade al menos un plato.");
       return;
-    }
-    // Navega a Orders pasando la orden por estado de navegación
-    navigate("/orders", { state: { activeOrder } });
+    } // Navega a Orders, pasando la orden y el menú actual (caché)
+    navigate("/orders", { state: { activeOrder, dishes } });
   };
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
-      {/* Header + categorías */}
+            {/* Header + categorías (Sticky Top) */}     {" "}
       <div className="sticky top-0 bg-red-800 text-white z-20">
+               {" "}
         <h1 className="p-4 text-3xl font-extrabold text-center text-yellow-400">
-          DatteBayo
+                    DatteBayo        {" "}
         </h1>
+               {" "}
         <nav className="flex justify-center space-x-2 bg-red-700 border-t border-red-900">
+                   {" "}
           {categories.map((cat) => (
             <button
               key={cat.id}
@@ -92,13 +104,18 @@ const Menu = () => {
                   : "hover:bg-red-600"
               }`}
             >
-              {cat.name}
+                            {cat.name}           {" "}
             </button>
           ))}
+                 {" "}
         </nav>
+             {" "}
       </div>
-      {/* Platos */}
-      <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto" >
+                  {/* Platos (Main Content) */}     {" "}
+      {/* pb-24: Espacio al final para que el contenido no quede detrás del PreviewOrder fijo */}
+           {" "}
+      <main className="flex-1 p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto pb-24">
+               {" "}
         {filteredDishes.length > 0 ? (
           filteredDishes.map((dish) => (
             <MenuItem
@@ -110,12 +127,20 @@ const Menu = () => {
           ))
         ) : (
           <p className="col-span-full text-gray-500">
-            No hay platos en esta categoría.
+                        No hay platos en esta categoría.          {" "}
           </p>
         )}
-              {/* Boton de previewOrder */}
-      {totalItems > 0 && <PreviewOrder activeOrder={activeOrder} />}
+             {" "}
       </main>
+      {/* PreviewOrder (Flotando en la parte inferior de la pantalla) */}     {" "}
+      {totalItems > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-transparent pointer-events-none">
+          <div className="max-w-4xl mx-auto pointer-events-auto">
+            <PreviewOrder activeOrder={activeOrder} onReview={goReview} />
+          </div>
+        </div>
+      )}
+         {" "}
     </div>
   );
 };
